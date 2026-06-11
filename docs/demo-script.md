@@ -4,23 +4,25 @@
 
 **Recommended opening line:**
 
-> I put together a lightweight concept using public ASC website content and fake/sample workflow data. This is not production code, not a final design, and not connected to Relias, Airtable, authentication, or live AI. The goal is to make the workflow easier to react to.
+> I put together a lightweight concept for what ASC Trust’s next website could feel like if the current public site were modernized and ARIA were built in as a safe support layer. It uses public ASC website content/assets and fake/sample workflow data. This is not production code, not an ASC-approved final design, and not connected to Relias, Airtable, authentication, or live AI. The goal is to make both the replacement-site direction and the ARIA workflow easier to react to.
 
 ## 3–5 minute walkthrough
 
-### 1. Public ASC experience
+### 1. Modernized ASC public website
 
 Start on the public site concept.
 
 Talking points:
 
-- ASC already has strong trust signals: scale, regional presence, retirement-plan credibility.
-- The opportunity is to make the participant journey clearer and more mobile-friendly.
+- This is intentionally framed as an ASC Trust website modernization, not just a standalone chatbot demo.
+- ASC already has strong trust signals: scale, regional presence, retirement-plan credibility, partners, values, testimonials, and contact locations.
+- The opportunity is to keep that institutional trust while making the participant journey clearer, more mobile-friendly, and easier to route.
+- The imported content index shows how ASC’s 45 public pages/posts and public asset library could be reorganized into a searchable, source-linked information architecture.
 - ARIA should feel like part of ASC's support experience, not a random chatbot bolted onto the old site.
 
-### 2. Public ARIA boundaries
+### 2. ARIA as the support layer
 
-Show the ARIA card on the homepage.
+Show the ARIA card on the homepage and the participant support hub.
 
 Talking points:
 
@@ -79,6 +81,7 @@ Talking points:
 
 ## Boundaries to state clearly
 
+- Public ASC copy/images/logos are used for private stakeholder concept review and should be replaced with ASC-approved source assets before production.
 - No real participant data.
 - No real authentication.
 - No live AI calls.
