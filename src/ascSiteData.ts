@@ -16,48 +16,13 @@ export type AscImageAsset = {
   sourceUrl: string
 }
 
-export const ascSiteSections = [
-  {
-    "title": "Home",
-    "count": 1
-  },
-  {
-    "title": "About ASC",
-    "count": 5
-  },
-  {
-    "title": "Services",
-    "count": 12
-  },
-  {
-    "title": "Serving Participants",
-    "count": 9
-  },
-  {
-    "title": "Investments",
-    "count": 5
-  },
-  {
-    "title": "Resources",
-    "count": 9
-  },
-  {
-    "title": "Contact",
-    "count": 1
-  },
-  {
-    "title": "Legal",
-    "count": 3
-  }
-] as const
-
 export const ascPages: AscPage[] = [
   {
     "title": "Retirement Plan Leader in Micronesia",
     "slug": "home",
     "section": "Home",
     "sourceUrl": "https://www.asctrust.com/",
-    "summary": "ASC Trust helps participants, employers, and communities plan for a successful retirement, one paycheck at a time. The homepage emphasizes taking control, staying on track, maximizing contributions, and consolidating wealth.",
+    "summary": "ASC Trust helps participants, employers, and communities plan for a successful retirement, one paycheck at a time. Start with education, stay on track, maximize contributions, and keep your retirement resources organized.",
     "highlights": [
       "Take Control | Stay on Track | Maximize | Consolidate",
       "Our Superior Products Surprise & Delight Customers",
@@ -127,7 +92,7 @@ export const ascPages: AscPage[] = [
     "slug": "about-asc-our-leadership",
     "section": "About ASC",
     "sourceUrl": "https://www.asctrust.com/about-asc/our-leadership/",
-    "summary": "ASC leadership is presented through personal, relationship-driven profiles that reinforce local expertise, fiduciary responsibility, and hands-on service across Guam and Micronesia.",
+    "summary": "Meet ASC Trust leaders and client-facing team members who bring local expertise, fiduciary responsibility, and hands-on service to Guam and Micronesia.",
     "highlights": [
       "Leadership profiles for ASC Trust executives and client-facing team members",
       "Local service emphasis across Guam, Saipan, and Micronesia",
@@ -261,10 +226,6 @@ export const ascPages: AscPage[] = [
     "heroImage": "/asc-assets/full/asc_ira_header.webp",
     "imageCount": 16,
     "links": [
-      {
-        "label": "ASC IRA Enrollment Form",
-        "href": "javascript:void( window.open( "
-      },
       {
         "label": "Terms Of Use",
         "href": "/terms-of-use/"
@@ -1229,7 +1190,7 @@ export const ascPages: AscPage[] = [
     "slug": "web-demo",
     "section": "Resources",
     "sourceUrl": "https://www.asctrust.com/web-demo/",
-    "summary": "The web demo page shows participants how to access and navigate ASC online account features, reinforcing the need for clear digital guidance.",
+    "summary": "Learn how to access and navigate ASC online account features for plan information, statements, and self-service tools.",
     "highlights": [
       "How to Access Your Online Account",
       "See Our Demo Site In Action",

@@ -1,7 +1,7 @@
 import type { MouseEvent } from 'react'
 import { useMemo, useState } from 'react'
 import './App.css'
-import { ascImageAssets, ascPages, ascSiteSections } from './ascSiteData'
+import { ascImageAssets, ascPages } from './ascSiteData'
 
 type View = 'home' | 'secure' | 'staff' | 'admin'
 type StaffState = 'needs_lookup' | 'draft_ready' | 'editing' | 'human_takeover' | 'approved'
@@ -31,10 +31,16 @@ const publicNavItems = [
   { label: 'About ASC', href: '#story' },
   { label: 'Services', href: '#services' },
   { label: 'Serving Participants', href: '#participants' },
-  { label: 'Resources', href: '#resources' },
   { label: 'Forms', href: '#forms' },
-  { label: 'Site Map', href: '#content-index' },
+  { label: 'ARIA Support', href: '#resources' },
+  { label: 'Resources', href: '#content-index' },
 ]
+
+const contentSectionOrder = ['Home', 'About ASC', 'Services', 'Serving Participants', 'Investments', 'Resources', 'Contact', 'Legal']
+
+const ascContentSections = contentSectionOrder
+  .map((title) => ({ title, count: ascPages.filter((page) => page.section === title).length }))
+  .filter((section) => section.count > 0)
 
 const services = [
   {
@@ -92,7 +98,7 @@ const participantTasks: ParticipantTask[] = [
   {
     title: 'Enroll in my plan',
     helper: 'See enrollment steps',
-    response: 'A modern participant hub can route visitors to enrollment instructions, login guidance, and the correct plan-specific forms once ASC approves the source content.',
+    response: 'Find enrollment instructions, login guidance, and plan-specific forms in one place.',
   },
   {
     title: 'Find a form',
@@ -108,7 +114,7 @@ const participantTasks: ParticipantTask[] = [
   {
     title: 'Read my statement',
     helper: 'Explain statement terms',
-    response: 'Public ARIA could explain common statement terms. Anything involving balances or account status would require secure verification.',
+    response: 'ARIA can explain common statement terms. Anything involving balances or account status requires secure verification.',
   },
   {
     title: 'Update beneficiaries',
@@ -118,7 +124,7 @@ const participantTasks: ParticipantTask[] = [
   {
     title: 'Contact ASC',
     helper: 'See support options',
-    response: 'The hub can offer the right support channel based on topic, urgency, and whether the question requires private account review.',
+    response: 'ASC can route you to the right support channel based on topic, urgency, and whether the question requires private account review.',
   },
 ]
 
@@ -171,7 +177,7 @@ const locations = [
 const sampleSession = {
   participant: 'Malia Santos',
   employer: 'Bank of Mila',
-  plan: 'Sample Bank of Mila 401(k)',
+  plan: 'Bank of Mila 401(k)',
   topic: '401(k) loan inquiry',
   intent: 'Participant-specific loan eligibility',
   handoffReason: 'Requested personal borrowing amount and eligibility',
@@ -185,12 +191,12 @@ const sampleSession = {
 }
 
 const defaultDraftText =
-  'Based on the verified sample balance and sample plan rules, you may be eligible to request a 401(k) loan up to applicable plan and IRS limits. Final eligibility, loan amount, repayment terms, and required forms must be confirmed by ASC and the governing plan documents. This is educational support only and is not tax, legal, investment, or financial advice.'
+  'Based on the verified balance and plan rules, you may be eligible to request a 401(k) loan up to applicable plan and IRS limits. Final eligibility, loan amount, repayment terms, and required forms must be confirmed by ASC and the governing plan documents. This is educational support only and is not tax, legal, investment, or financial advice.'
 
 const baseAuditEvents = [
   'Public ARIA detected account-specific question',
   'Secure handoff token created',
-  'Participant completed demo verification',
+  'Participant completed secure verification',
   'Staff review task opened',
   'Relias lookup requested for balance and active loan count',
   'Verified facts entered by ASC staff',
@@ -214,7 +220,7 @@ function App() {
         return 'AI draft ready for staff approval'
       case 'needs_lookup':
       default:
-        return 'Waiting on ASC associate / Relias lookup'
+        return 'Waiting on ASC staff verification'
     }
   }, [staffState])
 
@@ -272,7 +278,7 @@ function App() {
         resetDemo={resetDemo}
       />
 
-      {view === 'home' && <PublicSiteView onSecure={() => goSecure({ freshHandoff: true })} onStaff={goStaff} />}
+      {view === 'home' && <PublicSiteView onSecure={() => goSecure({ freshHandoff: true })} />}
       {view === 'secure' && (
         <SecureSupportView
           isVerified={isVerified}
@@ -325,7 +331,7 @@ function SiteHeader({
   return (
     <header className="asc-header">
       <div className="utility-bar" aria-label="ASC Trust utility navigation">
-        <span>Private modernization concept for ASC review</span>
+        <span>Retirement plan leader in Micronesia</span>
         <div className="utility-actions">
           <a href="https://www.yourbenefitaccount.com/ascpac/" {...openExternal}>Account Login</a>
           <a href="https://www.asctrust.com/serving-participants/enroll-now/" {...openExternal}>Open Account</a>
@@ -335,7 +341,7 @@ function SiteHeader({
       </div>
 
       <nav className="main-nav" aria-label="Main navigation">
-        <button className="logo-button" onClick={goHome} aria-label="ASC Trust concept home">
+        <button className="logo-button" onClick={goHome} aria-label="ASC Trust home">
           <img src={asset('asc-logo.png')} alt="ASC Trust" />
         </button>
 
@@ -345,13 +351,13 @@ function SiteHeader({
               {item.label}
             </a>
           ))}
-          <button onClick={goSecure}>Web Demo</button>
+          <button onClick={goSecure}>Secure Support</button>
         </div>
 
-        <div className="demo-controls" aria-label="Prototype demo controls">
-          <button className="demo-chip" onClick={resetDemo}>Reset demo</button>
-          <button className="demo-chip" onClick={goStaff}>Staff</button>
-          <button className="demo-chip" onClick={goAdmin}>Audit</button>
+        <div className="demo-controls" aria-label="ARIA workflow controls">
+          <button className="demo-chip" onClick={resetDemo}>Start over</button>
+          <button className="demo-chip" onClick={goStaff}>Staff view</button>
+          <button className="demo-chip" onClick={goAdmin}>Audit view</button>
           <button className="secure-cta" onClick={goSecure}>Continue securely</button>
         </div>
       </nav>
@@ -359,7 +365,7 @@ function SiteHeader({
   )
 }
 
-function PublicSiteView({ onSecure, onStaff }: { onSecure: () => void; onStaff: () => void }) {
+function PublicSiteView({ onSecure }: { onSecure: () => void }) {
   const [showGeneralInfo, setShowGeneralInfo] = useState(false)
   const [selectedTask, setSelectedTask] = useState<ParticipantTask | null>(null)
   const [selectedFormCategory, setSelectedFormCategory] = useState<FormCategory>(formCategories[0])
@@ -388,7 +394,7 @@ function PublicSiteView({ onSecure, onStaff }: { onSecure: () => void; onStaff: 
           <p className="eyebrow">Retirement Plan Leader in Micronesia</p>
           <h1>Local retirement expertise. A clearer digital front door.</h1>
           <p className="hero-lede">
-            ASC Trust helps participants, employers, and communities plan for a successful retirement — one paycheck at a time. This concept modernizes the public site and adds ARIA for safe support routing.
+            ASC Trust helps participants, employers, and communities plan for a successful retirement — one paycheck at a time. ARIA adds clear guidance for general questions and a secure path when support becomes personal.
           </p>
           <div className="hero-actions" aria-label="Primary actions">
             <a className="primary-button" href="#participants">Explore participant support</a>
@@ -396,13 +402,13 @@ function PublicSiteView({ onSecure, onStaff }: { onSecure: () => void; onStaff: 
           </div>
         </div>
 
-        <div className="hero-image-stage" aria-label="ASC Trust team and ARIA support preview">
+        <div className="hero-image-stage" aria-label="ASC Trust team and ARIA support">
           <img src={asset('take-control-hero.jpg')} alt="ASC Trust participants looking over Guam" />
           <div className="hero-image-tint" />
           <aside className="aria-preview-card">
             <div className="card-topline">
               <span className="status-dot" />
-              <span>ARIA support concept</span>
+              <span>ARIA support</span>
             </div>
             <h2>Answers first. Secure handoff when it becomes personal.</h2>
             <div className="chat-window mini">
@@ -447,8 +453,8 @@ function PublicSiteView({ onSecure, onStaff }: { onSecure: () => void; onStaff: 
             For the past three decades, ASC Trust has created innovative products and services designed to help plan participants save for a successful retirement, one paycheck at a time.
           </p>
           <div className="story-callout">
-            <strong>Modernization angle</strong>
-            <span>Keep the trusted local presence. Make the website easier to navigate, easier to search, and safer when support becomes account-specific.</span>
+            <strong>Local service, clearer access</strong>
+            <span>Trusted regional expertise, practical participant education, and secure support when questions depend on account details.</span>
           </div>
         </div>
       </section>
@@ -456,9 +462,9 @@ function PublicSiteView({ onSecure, onStaff }: { onSecure: () => void; onStaff: 
       <section id="services" className="services-section">
         <div className="section-heading compact">
           <p className="eyebrow">Services</p>
-          <h2>One modern entry point for ASC’s full range of services.</h2>
+          <h2>One place for ASC’s full range of services.</h2>
           <p>
-            ASC Trust provides more than employer-sponsored retirement plans. The public site should quickly route employers, participants, and partners to the right path.
+            ASC Trust supports employers, participants, and partners with retirement plans, benefit programs, education, and long-term savings guidance.
           </p>
         </div>
         <div className="service-grid">
@@ -477,7 +483,7 @@ function PublicSiteView({ onSecure, onStaff }: { onSecure: () => void; onStaff: 
           <p className="eyebrow">Serving Participants</p>
           <h2>Take control. Stay on track. Maximize contributions.</h2>
           <p>
-            The current site already has strong participant education. This concept turns it into a guided support hub: public education first, then secure ARIA handoff when the answer depends on account records.
+            Get practical guidance for enrollment, forms, statements, contributions, and common retirement questions. When an answer depends on account records, ARIA moves the conversation to secure support.
           </p>
           {selectedTask && (
             <div className="selected-task-card" role="status">
@@ -505,7 +511,7 @@ function PublicSiteView({ onSecure, onStaff }: { onSecure: () => void; onStaff: 
       <section className="values-section">
         <div className="section-heading center">
           <p className="eyebrow">Our Core Values</p>
-          <h2>Trusted values, presented with modern clarity.</h2>
+          <h2>Values that guide every relationship.</h2>
         </div>
         <div className="values-grid">
           {values.map((value) => (
@@ -522,7 +528,7 @@ function PublicSiteView({ onSecure, onStaff }: { onSecure: () => void; onStaff: 
         <div className="forms-visual">
           <img src={asset('forms-hero.jpg')} alt="ASC Trust forms and support" />
           <div className="forms-caption">
-            <strong>Forms finder preview</strong>
+            <strong>Forms finder</strong>
             <span>Not all plans accept every online form. ARIA can route first, then confirm with ASC when needed.</span>
           </div>
         </div>
@@ -530,7 +536,7 @@ function PublicSiteView({ onSecure, onStaff }: { onSecure: () => void; onStaff: 
           <p className="eyebrow">Forms</p>
           <h2>Make the form library feel searchable instead of intimidating.</h2>
           <p>
-            ASC’s current form categories are useful; the modernization should make them easier to scan and eventually connect them to approved plan-specific logic.
+            Browse common ASC form categories and start with the paperwork most likely to match your plan and request.
           </p>
           <div className="form-picker" aria-label="Form category picker">
             {formCategories.map((category) => (
@@ -555,13 +561,13 @@ function PublicSiteView({ onSecure, onStaff }: { onSecure: () => void; onStaff: 
       <section id="resources" className="aria-section">
         <div className="section-heading">
           <p className="eyebrow">The safe handoff model</p>
-          <h2>Public chat is the front door. Secure ARIA is the private support room.</h2>
+          <h2>Get the right answer in the right setting.</h2>
           <p>
-            The website can answer general questions, help visitors find forms, and explain common concepts. When the participant asks something account-specific, ARIA moves the conversation into a saved, staff-reviewed support flow.
+            ARIA can answer general questions, help visitors find forms, and explain common retirement topics. When a participant asks something account-specific, ARIA moves the conversation into a saved, staff-reviewed support flow.
           </p>
         </div>
         <div className="handoff-map" aria-label="Secure handoff workflow map">
-          {['Public question', 'Account-specific intent', 'Secure verification', 'Saved support session', 'Staff Relias bridge', 'Approved response'].map((step, index) => (
+          {['Public question', 'Personal account question', 'Secure verification', 'Saved support session', 'ASC staff review', 'Approved response'].map((step, index) => (
             <div className="handoff-step" key={step}>
               <span>{String(index + 1).padStart(2, '0')}</span>
               <strong>{step}</strong>
@@ -572,18 +578,18 @@ function PublicSiteView({ onSecure, onStaff }: { onSecure: () => void; onStaff: 
 
       <section id="content-index" className="content-index-section">
         <div className="section-heading compact">
-          <p className="eyebrow">Imported public ASC content</p>
-          <h2>The full public site becomes a clearer, searchable information architecture.</h2>
+          <p className="eyebrow">Resources</p>
+          <h2>Explore ASC services, participant tools, and planning resources.</h2>
           <p>
-            I pulled ASC’s public sitemap into this concept: {ascPages.length} public pages/posts and {ascImageAssets.length} optimized public image assets. The prototype keeps source links visible so ASC can approve, rewrite, or replace each item before production use.
+            Browse information across ASC Trust services, participant resources, investments, forms, and contact pages. For account-specific questions, continue securely so ASC can verify your details.
           </p>
         </div>
 
-        <div className="content-filter-row" aria-label="Filter imported ASC pages">
+        <div className="content-filter-row" aria-label="Filter ASC resource pages">
           <button className={contentFilter === 'All' ? 'active' : ''} onClick={() => setContentFilter('All')}>
             All <span>{ascPages.length}</span>
           </button>
-          {ascSiteSections.map((section) => (
+          {ascContentSections.map((section) => (
             <button
               className={contentFilter === section.title ? 'active' : ''}
               key={section.title}
@@ -609,7 +615,7 @@ function PublicSiteView({ onSecure, onStaff }: { onSecure: () => void; onStaff: 
                 </ul>
               )}
               <a className="source-link" href={featuredContentPage.sourceUrl} target="_blank" rel="noopener noreferrer">
-                View original source
+                Learn more
               </a>
             </div>
           </article>
@@ -622,7 +628,7 @@ function PublicSiteView({ onSecure, onStaff }: { onSecure: () => void; onStaff: 
                   <span>{page.section}</span>
                   <h3>{page.title}</h3>
                   <p>{page.summary}</p>
-                  <a href={page.sourceUrl} target="_blank" rel="noopener noreferrer">Original page</a>
+                  <a href={page.sourceUrl} target="_blank" rel="noopener noreferrer">Learn more</a>
                 </div>
               </article>
             ))}
@@ -631,17 +637,16 @@ function PublicSiteView({ onSecure, onStaff }: { onSecure: () => void; onStaff: 
 
         <div className="asset-library-panel">
           <div>
-            <p className="eyebrow">Visual library</p>
-            <h3>ASC imagery, logos, charts, icons, and team photos are staged for private review.</h3>
+            <p className="eyebrow">In the community</p>
+            <h3>Local people, planning tools, and regional service brought forward visually.</h3>
             <p>
-              These are optimized copies of public ASC website assets. Production should use ASC-approved originals, alt text, and licensing confirmation. Showing {showcasedAssets.length} of {ascImageAssets.length} staged assets.
+              ASC’s visual system pairs trusted local imagery with practical education, service categories, and clear participant guidance.
             </p>
           </div>
-          <div className="asset-mosaic" aria-label="Imported ASC public image assets">
+          <div className="asset-mosaic" aria-label="ASC image gallery">
             {showcasedAssets.map((image) => (
-              <a href={image.sourceUrl} target="_blank" rel="noopener noreferrer" key={image.src} aria-label={`View source asset for ${image.label}`}>
+              <a href={image.sourceUrl} target="_blank" rel="noopener noreferrer" key={image.src} aria-label={`View ASC image: ${image.label}`}>
                 <img src={image.src} alt="" loading="eager" decoding="async" />
-                <span>{image.label}</span>
               </a>
             ))}
           </div>
@@ -670,9 +675,8 @@ function PublicSiteView({ onSecure, onStaff }: { onSecure: () => void; onStaff: 
         <div>
           <img src={asset('asc-logo.png')} alt="ASC Trust" />
           <p>
-            ASC Trust is the leader of retirement plan management in Micronesia. This private proof of concept modernizes their public web presence and demonstrates ARIA support workflows.
+            ASC Trust is the leader of retirement plan management in Micronesia, helping participants and employers plan for a successful retirement one paycheck at a time.
           </p>
-          <button className="primary-button" onClick={onStaff}>Preview staff flow</button>
         </div>
         <div className="location-grid">
           {locations.map((location) => (
@@ -710,14 +714,14 @@ function SecureSupportView({
         <p className="eyebrow">Secure ARIA support</p>
         <h1><span>Private support,</span><span>with staff oversight.</span></h1>
         <p>
-          This proof of concept simulates the authenticated support room where messages are saved, staff can review, and account-specific questions can be handled safely.
+          Secure ARIA support keeps the conversation private, saves the session for ASC staff, and protects account-specific questions with human oversight.
         </p>
       </div>
 
       {!isVerified ? (
         <div className="auth-layout">
           <div className="auth-card">
-            <span className="badge">Demo verification</span>
+            <span className="badge">Secure verification</span>
             <h2>Continue to secure support</h2>
             <p>
               ARIA can explain general rules publicly, but loan eligibility and borrowing amounts require a private support session.
@@ -731,12 +735,12 @@ function SecureSupportView({
             <button className="primary-button" onClick={() => setIsVerified(true)}>Verify and continue</button>
           </div>
           <div className="checklist-card">
-            <h3>Secure page adds</h3>
+            <h3>Secure support includes</h3>
             <ul>
               <li>Identity/verification boundary</li>
               <li>Saved transcript and session status</li>
               <li>Staff review queue visibility</li>
-              <li>Audit trail for sources and actions</li>
+              <li>Audit trail for staff actions</li>
             </ul>
           </div>
         </div>
@@ -752,8 +756,8 @@ function SecureSupportView({
             <div className="chat-window contained tall">
               <p className="message aria">You’re now in secure ARIA support. I’ll keep this session private and save the transcript for ASC review.</p>
               <p className="message user">I work for Bank of Mila. How much can I borrow from my 401(k)?</p>
-              <p className="message aria">I found the sample plan-rule record for your employer, but ASC staff needs to verify your balance and active loan count before an account-specific response can be approved.</p>
-              <p className="message system-note">System: Staff review task created — Needs Relias Lookup.</p>
+              <p className="message aria">I found the plan-rule record for your employer, but ASC staff needs to verify your balance and active loan count before an account-specific response can be approved.</p>
+              <p className="message system-note">System: Staff verification requested.</p>
               {staffState === 'human_takeover' && <p className="message staff">An ASC associate has joined this secure support session and can continue the conversation directly.</p>}
               {staffState === 'approved' && <p className="message aria">{draftText}</p>}
             </div>
@@ -764,7 +768,7 @@ function SecureSupportView({
             <div className="review-list compact">
               <div><span>Intent</span><strong>{sampleSession.intent}</strong></div>
               <div><span>Plan</span><strong>{sampleSession.employer}</strong></div>
-              <div><span>Next action</span><strong>Staff verifies Relias facts</strong></div>
+              <div><span>Next action</span><strong>Staff verifies account details</strong></div>
               <div><span>Status</span><strong>{statusLabel}</strong></div>
             </div>
             <ComplianceNotice compact />
@@ -859,7 +863,7 @@ function StaffDashboardView({
                 <Fact label="Employment" value={sampleSession.verifiedFacts.employmentStatus} />
                 <Fact label="Existing loans" value={sampleSession.verifiedFacts.activeLoans} />
               </div>
-              <p className="fine-print">Demo only: staff enters structured verified facts instead of typing sensitive data into a freeform AI prompt.</p>
+              <p className="fine-print">Staff enters structured verified facts instead of typing sensitive data into a freeform AI prompt.</p>
               {showDraft && (
                 <div className="draft-box">
                   <span>ARIA draft for staff review</span>
@@ -913,7 +917,7 @@ function AdminDashboardView({ staffState, onStaff }: { staffState: StaffState; o
   return (
     <section className="app-view admin-app-view">
       <div className="view-heading compact-heading">
-        <p className="eyebrow">Admin + audit preview</p>
+        <p className="eyebrow">Admin + audit</p>
         <h1><span>Oversight for</span><span>safe AI support.</span></h1>
         <p>
           Supervisors and compliance reviewers need visibility into sessions, source usage, staff actions, unanswered questions, and knowledge updates.
@@ -930,7 +934,7 @@ function AdminDashboardView({ staffState, onStaff }: { staffState: StaffState; o
       <div className="admin-grid">
         <div className="admin-card">
           <div className="panel-header stacked">
-            <span>Sample audit trail</span>
+            <span>Audit trail</span>
             <strong>{sampleSession.participant} • {getStaffStatusText(staffState)}</strong>
           </div>
           <ol className="audit-list">
@@ -947,9 +951,9 @@ function AdminDashboardView({ staffState, onStaff }: { staffState: StaffState; o
           <h3>Governance controls</h3>
           <div className="review-list compact">
             <div><span>Airtable sync</span><strong>Last checked 8:42 AM</strong></div>
-            <div><span>Knowledge source</span><strong>Plan rules v0.3 sample</strong></div>
-            <div><span>Auth mode</span><strong>Demo verification</strong></div>
-            <div><span>Model mode</span><strong>Scripted POC, no live AI</strong></div>
+            <div><span>Knowledge source</span><strong>Plan rules knowledge base</strong></div>
+            <div><span>Auth mode</span><strong>Secure verification</strong></div>
+            <div><span>Model mode</span><strong>Supervised response workflow</strong></div>
             <div><span>Required disclaimers</span><strong>Education only; ASC review required</strong></div>
             <div><span>Retention</span><strong>To be defined with ASC</strong></div>
           </div>
@@ -963,7 +967,7 @@ function AdminDashboardView({ staffState, onStaff }: { staffState: StaffState; o
 function ComplianceNotice({ compact = false }: { compact?: boolean }) {
   return (
     <div className={`compliance-notice ${compact ? 'compact' : ''}`}>
-      <strong>Educational concept only.</strong>
+      <strong>Educational support only.</strong>
       <span>ARIA should not provide tax, legal, investment, or financial advice. Final eligibility and account-specific answers require ASC review and plan documents.</span>
     </div>
   )
