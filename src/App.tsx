@@ -849,7 +849,7 @@ function StaffDashboardView({
 
             <div className="staff-card action-card">
               <h3>Relias bridge + plan rules</h3>
-              <div className="context-box muted">
+              <div className="context-box">
                 <span>Matched plan rule</span>
                 <strong>{sampleSession.planRule}</strong>
               </div>
