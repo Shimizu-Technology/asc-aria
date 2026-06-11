@@ -729,7 +729,6 @@ small {
   font-weight: 850;
 }
 
-.session-status.waiting,
 .session-status.needs_lookup {
   background: #fff8e6;
   color: #9a6200;
