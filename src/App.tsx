@@ -11,23 +11,90 @@ type ParticipantTask = {
   startsSecureHandoff?: boolean
 }
 
+type FormCategory = {
+  title: string
+  forms: string[]
+}
+
+const asset = (name: string) => `/asc-assets/${name}`
+
 const stats = [
   { value: '675+', label: 'retirement plans managed' },
   { value: '50,000+', label: 'participants represented' },
   { value: '$1B+', label: 'assets managed' },
-  { value: '5', label: 'locations in the region' },
+  { value: '5', label: 'locations throughout the region' },
+]
+
+const publicNavItems = [
+  { label: 'About ASC', href: '#story' },
+  { label: 'Services', href: '#services' },
+  { label: 'Serving Participants', href: '#participants' },
+  { label: 'Resources', href: '#resources' },
+  { label: 'Forms', href: '#forms' },
+]
+
+const services = [
+  {
+    title: 'Retirement Plans',
+    body: 'Plan design, compliance, administration, recordkeeping, reporting, and audit support for employer-sponsored retirement plans.',
+  },
+  {
+    title: 'Participant Education',
+    body: 'On-site meetings, quarterly statements, retirement report cards, welcome kits, and one-on-one advisory conversations.',
+  },
+  {
+    title: 'IRA and Savings Programs',
+    body: 'Support for Individual Retirement Accounts, Guam College Savings Plans, and other long-term savings needs.',
+  },
+  {
+    title: 'Benefits Administration',
+    body: 'Administration support for Health Savings Accounts, Section 125 Cafeteria Plans, and charitable giving programs.',
+  },
+]
+
+const values = [
+  {
+    title: 'Participants Come First',
+    icon: 'icon-participants-first.png',
+    body: 'ASC Trust is sustained by the faith that participants place in us. Their trust is built on our integrity and our advocacy of their interests.',
+  },
+  {
+    title: 'Superior Products',
+    icon: 'icon-products.png',
+    body: 'Products must delight customers, exceed expectations, and raise the standard that has come before.',
+  },
+  {
+    title: 'Entrepreneurial Spirit',
+    icon: 'icon-entrepreneurial.png',
+    body: 'Independent thought, agile decision making, and creative solutions keep the organization moving forward.',
+  },
+  {
+    title: 'Uncompromising Ethics',
+    icon: 'icon-ethics.png',
+    body: 'ASC requires everyone in the organization to adhere to the highest ethical standards.',
+  },
+  {
+    title: 'Great People',
+    icon: 'icon-people.png',
+    body: 'Every person who works at ASC Trust contributes to the success of clients, participants, and the wider community.',
+  },
+  {
+    title: 'Financial Success',
+    icon: 'icon-finance.png',
+    body: 'Financial success is used to further ASC’s purpose in harmony with its values.',
+  },
 ]
 
 const participantTasks: ParticipantTask[] = [
   {
     title: 'Enroll in my plan',
     helper: 'See enrollment steps',
-    response: 'A production participant hub could route this to enrollment instructions, login guidance, and plan-specific forms once ASC approves the source content.',
+    response: 'A modern participant hub can route visitors to enrollment instructions, login guidance, and the correct plan-specific forms once ASC approves the source content.',
   },
   {
     title: 'Find a form',
     helper: 'Open form finder',
-    response: 'ARIA can help narrow down the correct form category without asking for private account data in public chat.',
+    response: 'ARIA can ask a few safe routing questions, narrow the form category, and keep private account facts out of public chat.',
   },
   {
     title: 'Understand 401(k) loans',
@@ -49,6 +116,52 @@ const participantTasks: ParticipantTask[] = [
     title: 'Contact ASC',
     helper: 'See support options',
     response: 'The hub can offer the right support channel based on topic, urgency, and whether the question requires private account review.',
+  },
+]
+
+const formCategories: FormCategory[] = [
+  {
+    title: '401(k) / 403(b)',
+    forms: ['Enrollment/Change Form', 'Hardship Request Form', 'Distribution Form', 'Loan Form', 'Census Form', 'Spousal Consent Form'],
+  },
+  {
+    title: 'GCC/GDOE/UOG 403(b)',
+    forms: ['403(b) Enrollment/Change Form', '403(b) Distribution Form', '403(b) Loan Form', '403(b) Hardship Request Form'],
+  },
+  {
+    title: 'NMI DC Retirement Forms',
+    forms: ['NMI Enrollment/Change Form', 'NMI Hardship Request Form', 'NMI Distribution Form', 'NMI Spousal Consent Form', 'NMI Loan Form'],
+  },
+  {
+    title: 'Guam College Savings Plan',
+    forms: ['529 College Savings Enrollment Form', '529 College Savings Contribution Change Form', '529 College Savings Distribution Form'],
+  },
+  {
+    title: 'Individual Retirement Accounts',
+    forms: ['IRA Enrollment Form', 'IRA Distribution Form', 'Spousal Consent Form'],
+  },
+  {
+    title: 'HSA and Section 125',
+    forms: ['ASC HSA Enrollment Form', 'ASC HSA Distribution Form', 'Dependent Care Claim Form', 'Medical Care Expense Form'],
+  },
+]
+
+const locations = [
+  {
+    region: 'Guam',
+    address: ['120 Father Dueñas Avenue', 'Suite 110', 'Hagåtña, GU 96910'],
+    phone: 'Main 671.477.2724',
+    extra: 'Toll-free from US 866.577.9049',
+  },
+  {
+    region: 'Saipan',
+    address: ['PO Box 10001', 'PMB 201', 'Saipan, MP 96950'],
+    phone: 'Main 670.235.2724/5',
+  },
+  {
+    region: 'Micronesia',
+    address: ['P.O. Box 2113', 'Kolonia, PNI 96941'],
+    phone: 'Main 691.320.7470',
   },
 ]
 
@@ -140,25 +253,14 @@ function App() {
 
   return (
     <main className="site-shell">
-      <nav className="top-nav" aria-label="Main navigation">
-        <button className="brand brand-button" onClick={goHome} aria-label="ASC Trust concept home">
-          <span className="brand-mark">ASC</span>
-          <span>
-            <strong>ASC Trust</strong>
-            <small>Automated Retirement Information System Concept</small>
-          </span>
-        </button>
-        <div className="nav-links" aria-label="Concept sections">
-          <button onClick={goHome}>Public site</button>
-          <button onClick={() => goSecure()}>Secure support</button>
-          <button onClick={goStaff}>Staff dashboard</button>
-          <button onClick={goAdmin}>Admin/audit</button>
-        </div>
-        <div className="nav-actions">
-          <button className="reset-link" onClick={resetDemo}>Reset demo</button>
-          <button className="login-link" onClick={() => goSecure({ freshHandoff: true })}>Continue securely</button>
-        </div>
-      </nav>
+      <SiteHeader
+        view={view}
+        goHome={goHome}
+        goSecure={() => goSecure({ freshHandoff: true })}
+        goStaff={goStaff}
+        goAdmin={goAdmin}
+        resetDemo={resetDemo}
+      />
 
       {view === 'home' && <PublicSiteView onSecure={() => goSecure({ freshHandoff: true })} onStaff={goStaff} />}
       {view === 'secure' && (
@@ -182,18 +284,66 @@ function App() {
         />
       )}
       {view === 'admin' && <AdminDashboardView staffState={staffState} onStaff={goStaff} />}
-
-      <footer className="site-footer">
-        <strong>ASC + ARIA Secure Support Concept</strong>
-        <span>Public ASC content + fake/sample participant workflow data only. Not connected to Relias, Airtable, or live AI.</span>
-      </footer>
     </main>
+  )
+}
+
+function SiteHeader({
+  view,
+  goHome,
+  goSecure,
+  goStaff,
+  goAdmin,
+  resetDemo,
+}: {
+  view: View
+  goHome: () => void
+  goSecure: () => void
+  goStaff: () => void
+  goAdmin: () => void
+  resetDemo: () => void
+}) {
+  return (
+    <header className="asc-header">
+      <div className="utility-bar" aria-label="ASC Trust utility navigation">
+        <span>Private modernization concept for ASC review</span>
+        <div className="utility-actions">
+          <a href="https://www.yourbenefitaccount.com/ascpac/">Account Login</a>
+          <a href="https://www.asctrust.com/serving-participants/enroll-now/">Open Account</a>
+          <a href="#contact">Contact Us</a>
+          <a href="https://www.asctrust.com/request-a-proposal/">Request Proposal</a>
+        </div>
+      </div>
+
+      <nav className="main-nav" aria-label="Main navigation">
+        <button className="logo-button" onClick={goHome} aria-label="ASC Trust concept home">
+          <img src={asset('asc-logo.png')} alt="ASC Trust" />
+        </button>
+
+        <div className="public-nav-links" aria-label="ASC public site sections">
+          {publicNavItems.map((item) => (
+            <a key={item.label} href={view === 'home' ? item.href : '#'} onClick={view === 'home' ? undefined : goHome}>
+              {item.label}
+            </a>
+          ))}
+          <button onClick={goSecure}>Web Demo</button>
+        </div>
+
+        <div className="demo-controls" aria-label="Prototype demo controls">
+          <button className="demo-chip" onClick={resetDemo}>Reset demo</button>
+          <button className="demo-chip" onClick={goStaff}>Staff</button>
+          <button className="demo-chip" onClick={goAdmin}>Audit</button>
+          <button className="secure-cta" onClick={goSecure}>Continue securely</button>
+        </div>
+      </nav>
+    </header>
   )
 }
 
 function PublicSiteView({ onSecure, onStaff }: { onSecure: () => void; onStaff: () => void }) {
   const [showGeneralInfo, setShowGeneralInfo] = useState(false)
   const [selectedTask, setSelectedTask] = useState<ParticipantTask | null>(null)
+  const [selectedFormCategory, setSelectedFormCategory] = useState<FormCategory>(formCategories[0])
 
   const handleTaskClick = (task: ParticipantTask) => {
     if (task.startsSecureHandoff) {
@@ -205,48 +355,45 @@ function PublicSiteView({ onSecure, onStaff }: { onSecure: () => void; onStaff: 
 
   return (
     <>
-      <section id="hero" className="hero-section">
-        <div className="hero-copy">
+      <section id="home" className="asc-hero">
+        <div className="hero-panel">
           <p className="eyebrow">Retirement Plan Leader in Micronesia</p>
-          <h1><span>Retirement</span><span>support,</span><span>made clearer.</span></h1>
+          <h1>Local retirement expertise. A clearer digital front door.</h1>
           <p className="hero-lede">
-            ASC Trust helps participants, employers, and communities plan for a stronger financial future — one paycheck at a time.
+            ASC Trust helps participants, employers, and communities plan for a successful retirement — one paycheck at a time. This concept modernizes the public site and adds ARIA for safe support routing.
           </p>
           <div className="hero-actions" aria-label="Primary actions">
-            <a className="primary-button" href="#participants">I’m a participant</a>
-            <button className="secondary-button" onClick={onStaff}>Preview staff flow</button>
+            <a className="primary-button" href="#participants">Explore participant support</a>
+            <button className="secondary-button" onClick={onSecure}>Continue securely</button>
           </div>
         </div>
 
-        <aside className="aria-preview-card" aria-label="ARIA secure handoff preview">
-          <div className="card-topline">
-            <span className="status-dot" />
-            <span>Public ARIA is online</span>
-          </div>
-          <div className="acronym-box">
-            <span>ARIA</span>
-            <strong>Automated Retirement Information System</strong>
-          </div>
-          <h2><span>Helpful answers first.</span><span>Secure handoff when</span><span>it becomes personal.</span></h2>
-          <div className="chat-window mini">
-            <p className="message aria">Buenos! I can help with forms, general 401(k) questions, and next steps.</p>
-            <p className="message user">I work for Bank of Mila. How much can I borrow from my 401(k)?</p>
-            <p className="message aria">
-              To answer how much you may personally be eligible to borrow, ASC needs to verify your identity and account information securely.
-            </p>
-          </div>
-          <div className="handoff-actions">
-            <button className="secure-button" onClick={onSecure}>Continue securely</button>
-            <button className="ghost-button" onClick={() => setShowGeneralInfo(true)}>General info only</button>
-          </div>
-          {showGeneralInfo && (
-            <div className="inline-info-card" role="status">
-              <strong>General 401(k) loan info stays public.</strong>
-              <span>ARIA can explain common loan concepts and forms here, but personal eligibility, balances, and loan counts move to secure support.</span>
+        <div className="hero-image-stage" aria-label="ASC Trust team and ARIA support preview">
+          <img src={asset('take-control-hero.jpg')} alt="ASC Trust participants looking over Guam" />
+          <div className="hero-image-tint" />
+          <aside className="aria-preview-card">
+            <div className="card-topline">
+              <span className="status-dot" />
+              <span>ARIA support concept</span>
             </div>
-          )}
-          <ComplianceNotice compact />
-        </aside>
+            <h2>Answers first. Secure handoff when it becomes personal.</h2>
+            <div className="chat-window mini">
+              <p className="message aria">Buenos! I can help with forms, general 401(k) questions, and next steps.</p>
+              <p className="message user">I work for Bank of Mila. How much can I borrow from my 401(k)?</p>
+              <p className="message aria">To answer that, ASC needs to verify your identity and account information securely.</p>
+            </div>
+            <div className="handoff-actions">
+              <button className="secure-button" onClick={onSecure}>Continue securely</button>
+              <button className="ghost-button" onClick={() => setShowGeneralInfo(true)}>General info only</button>
+            </div>
+            {showGeneralInfo && (
+              <div className="inline-info-card" role="status">
+                <strong>General 401(k) loan education stays public.</strong>
+                <span>Personal eligibility, balances, and active loan counts move to secure support.</span>
+              </div>
+            )}
+          </aside>
+        </div>
       </section>
 
       <section className="stats-strip" aria-label="ASC Trust public credibility stats">
@@ -258,12 +405,51 @@ function PublicSiteView({ onSecure, onStaff }: { onSecure: () => void; onStaff: 
         ))}
       </section>
 
-      <section id="participants" className="split-section participant-section">
-        <div>
-          <p className="eyebrow">Participant support hub</p>
-          <h2>One clear place to start — before ARIA routes the complex parts.</h2>
+      <section id="story" className="story-section">
+        <div className="image-offset-card">
+          <img src={asset('asc-team.jpg')} alt="ASC Trust team" />
+        </div>
+        <div className="section-copy">
+          <p className="eyebrow">Our Story</p>
+          <h2>ASC Trust is a proven leader.</h2>
           <p>
-            The public experience stays safe and useful: education, routing, forms, and support paths. Account-specific questions move to authenticated support where staff can monitor and intervene.
+            We’re the largest provider of retirement plan management services in Micronesia. To best serve clients, ASC’s team of more than 60 professionals are located in five locations throughout the region.
+          </p>
+          <p>
+            For the past three decades, ASC Trust has created innovative products and services designed to help plan participants save for a successful retirement, one paycheck at a time.
+          </p>
+          <div className="story-callout">
+            <strong>Modernization angle</strong>
+            <span>Keep the trusted local presence. Make the website easier to navigate, easier to search, and safer when support becomes account-specific.</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="services" className="services-section">
+        <div className="section-heading compact">
+          <p className="eyebrow">Services</p>
+          <h2>One modern entry point for ASC’s full range of services.</h2>
+          <p>
+            ASC Trust provides more than employer-sponsored retirement plans. The public site should quickly route employers, participants, and partners to the right path.
+          </p>
+        </div>
+        <div className="service-grid">
+          {services.map((service) => (
+            <article className="service-card" key={service.title}>
+              <span />
+              <h3>{service.title}</h3>
+              <p>{service.body}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section id="participants" className="participant-section">
+        <div className="participant-copy">
+          <p className="eyebrow">Serving Participants</p>
+          <h2>Take control. Stay on track. Maximize contributions.</h2>
+          <p>
+            The current site already has strong participant education. This concept turns it into a guided support hub: public education first, then secure ARIA handoff when the answer depends on account records.
           </p>
           {selectedTask && (
             <div className="selected-task-card" role="status">
@@ -272,28 +458,124 @@ function PublicSiteView({ onSecure, onStaff }: { onSecure: () => void; onStaff: 
               <p>{selectedTask.response}</p>
             </div>
           )}
+          <div className="participant-chart-row">
+            <img src={asset('chart-take-control.jpg')} alt="Take Control retirement savings chart" />
+            <img src={asset('chart-stay-on-track.jpg')} alt="Stay on Track retirement progress chart" />
+            <img src={asset('chart-maximize.jpg')} alt="Maximize contributions retirement savings chart" />
+          </div>
         </div>
         <div className="task-grid" aria-label="Participant task cards">
           {participantTasks.map((task) => (
             <button onClick={() => handleTaskClick(task)} className="task-card" key={task.title}>
               <span>{task.title}</span>
-              <small>{task.helper} →</small>
+              <small>{task.helper}</small>
             </button>
           ))}
         </div>
       </section>
 
-      <section id="workflow" className="aria-section">
+      <section className="values-section">
+        <div className="section-heading center">
+          <p className="eyebrow">Our Core Values</p>
+          <h2>Trusted values, presented with modern clarity.</h2>
+        </div>
+        <div className="values-grid">
+          {values.map((value) => (
+            <article className="value-card" key={value.title}>
+              <img src={asset(value.icon)} alt="" aria-hidden="true" />
+              <h3>{value.title}</h3>
+              <p>{value.body}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section id="forms" className="forms-modern-section">
+        <div className="forms-visual">
+          <img src={asset('forms-hero.jpg')} alt="ASC Trust forms and support" />
+          <div className="forms-caption">
+            <strong>Forms finder preview</strong>
+            <span>Not all plans accept every online form. ARIA can route first, then confirm with ASC when needed.</span>
+          </div>
+        </div>
+        <div className="forms-panel">
+          <p className="eyebrow">Forms</p>
+          <h2>Make the form library feel searchable instead of intimidating.</h2>
+          <p>
+            ASC’s current form categories are useful; the modernization should make them easier to scan and eventually connect them to approved plan-specific logic.
+          </p>
+          <div className="form-picker" aria-label="Form category picker">
+            {formCategories.map((category) => (
+              <button
+                className={category.title === selectedFormCategory.title ? 'active' : ''}
+                key={category.title}
+                onClick={() => setSelectedFormCategory(category)}
+              >
+                {category.title}
+              </button>
+            ))}
+          </div>
+          <div className="form-results" role="status">
+            <strong>{selectedFormCategory.title}</strong>
+            <ul>
+              {selectedFormCategory.forms.map((form) => <li key={form}>{form}</li>)}
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="resources" className="aria-section">
         <div className="section-heading">
           <p className="eyebrow">The safe handoff model</p>
           <h2>Public chat is the front door. Secure ARIA is the private support room.</h2>
+          <p>
+            The website can answer general questions, help visitors find forms, and explain common concepts. When the participant asks something account-specific, ARIA moves the conversation into a saved, staff-reviewed support flow.
+          </p>
         </div>
         <div className="handoff-map" aria-label="Secure handoff workflow map">
           {['Public question', 'Account-specific intent', 'Secure verification', 'Saved support session', 'Staff Relias bridge', 'Approved response'].map((step, index) => (
             <div className="handoff-step" key={step}>
-              <span>{index + 1}</span>
+              <span>{String(index + 1).padStart(2, '0')}</span>
               <strong>{step}</strong>
             </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="proof-section">
+        <div className="testimonial-card">
+          <p className="eyebrow">What Clients Are Saying</p>
+          <blockquote>
+            “Not only did ASC Trust break this notion, they surpassed my expectations. We were able to start a plan that was both fairly priced and made sense with what we were looking for.”
+          </blockquote>
+          <cite>Bill Beery, General Manager, Tutujan Hill Group</cite>
+        </div>
+        <div className="partners-card">
+          <p className="eyebrow">Our Partners</p>
+          <p>
+            ASC Trust combines local personal service with support from industry-leading partners that help manage technology and investments.
+          </p>
+          <img src={asset('partners.png')} alt="ASC Trust partner logos: BGIS, Fidelity Investments, and FIS" />
+          <small>Partners are not employed by or affiliated with ASC Trust.</small>
+        </div>
+      </section>
+
+      <section id="contact" className="modern-footer">
+        <div>
+          <img src={asset('asc-logo.png')} alt="ASC Trust" />
+          <p>
+            ASC Trust is the leader of retirement plan management in Micronesia. This private proof of concept modernizes their public web presence and demonstrates ARIA support workflows.
+          </p>
+          <button className="primary-button" onClick={onStaff}>Preview staff flow</button>
+        </div>
+        <div className="location-grid">
+          {locations.map((location) => (
+            <article className="location-card" key={location.region}>
+              <h3>{location.region}</h3>
+              {location.address.map((line) => <span key={line}>{line}</span>)}
+              <strong>{location.phone}</strong>
+              {location.extra && <small>{location.extra}</small>}
+            </article>
           ))}
         </div>
       </section>
@@ -377,6 +659,7 @@ function SecureSupportView({
               <div><span>Intent</span><strong>{sampleSession.intent}</strong></div>
               <div><span>Plan</span><strong>{sampleSession.employer}</strong></div>
               <div><span>Next action</span><strong>Staff verifies Relias facts</strong></div>
+              <div><span>Status</span><strong>{statusLabel}</strong></div>
             </div>
             <ComplianceNotice compact />
             <button className="approve-button" onClick={onStaff}>Open staff dashboard</button>

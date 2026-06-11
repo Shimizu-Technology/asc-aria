@@ -8,6 +8,7 @@ This is a lightweight React/Vite concept, not production code. It is intended fo
 
 See:
 
+- `docs/content-and-assets.md` for the public ASC Trust pages/assets reviewed, what was included locally, and the asset-approval boundary.
 - `docs/asc-public-content.md` for the public ASC Trust pages/content checked and the demo-data boundary.
 - `docs/architecture-and-rag-plan.md` for the recommended long-term React + Rails + Airtable/RAG architecture.
 - `docs/secure-support-workflow.md` for the public-to-authenticated ARIA handoff, staff dashboard, Relias bridge, and admin/audit model.
@@ -16,9 +17,9 @@ See:
 
 ## Current prototype includes
 
-- Premium Apple/Stripe-inspired responsive homepage concept
+- ASC Trust website modernization concept using real public ASC structure, copy, imagery, logo, stats, values, forms, partners, and contact details
+- ASC-style responsive header with Account Login, Open Account, Contact Us, Request Proposal, public navigation, and discreet demo controls
 - Participant support hub task cards
-- Employer/plan sponsor credibility section
 - Public ARIA assistant concept with account-specific secure handoff
 - Fake authenticated secure support page
 - Saved-session participant chat mockup
@@ -29,6 +30,7 @@ See:
 
 ## Important boundaries
 
+- Public ASC website copy/images/logos are included for private stakeholder concept review only; production usage should be approved by ASC and replaced with official source assets where possible
 - No real participant data
 - No real authentication
 - No real AI/API calls
