@@ -404,7 +404,7 @@ function StaffDashboardView({
 }) {
   const showDraft = staffState === 'draft_ready' || staffState === 'editing' || staffState === 'approved'
   const canApprove = showDraft && staffState !== 'approved'
-  const canGenerateDraft = staffState !== 'approved' && staffState !== 'human_takeover' && staffState !== 'editing'
+  const canGenerateDraft = staffState === 'needs_lookup'
   const canEdit = showDraft && staffState !== 'approved'
   const canTakeOver = staffState !== 'approved' && staffState !== 'human_takeover'
 
