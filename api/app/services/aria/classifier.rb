@@ -113,9 +113,10 @@ module Aria
     end
 
     def matched_plan_rule
-      @matched_plan_rule ||= PlanRule.active.detect do |rule|
-        normalized_message.include?(rule.employer_name.downcase) || normalized_message.include?(rule.plan_name.downcase)
-      end
+      @matched_plan_rule ||= PlanRule.active
+        .matching_public_message(normalized_message)
+        .order(:employer_name, :plan_name)
+        .first
     end
   end
 end

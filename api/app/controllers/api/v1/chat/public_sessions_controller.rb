@@ -13,13 +13,9 @@ module Api
               metadata: { response_mode: "welcome", ai_used: false }
             )
             session.touch_last_message!(welcome.occurred_at)
-
-            AuditEvent.record!(
-              action: "public_chat_session_created",
-              auditable: session,
-              metadata: { fake_data_only: true, source: "public_aria" }
-            )
           end
+
+          record_session_created_audit_safely(session)
 
           render json: { public_chat_session: session.as_api_json }, status: :created
         end
@@ -34,6 +30,18 @@ module Api
 
         def public_chat_session
           @public_chat_session ||= PublicChatSession.find_by!(token: params[:id])
+        end
+
+        def record_session_created_audit_safely(session)
+          AuditEvent.record!(
+            action: "public_chat_session_created",
+            auditable: session,
+            metadata: { fake_data_only: true, source: "public_aria" }
+          )
+        rescue StandardError => e
+          Rails.logger.warn(
+            "[ARIA] Failed to record public chat session audit event for session #{session.id}: #{e.class} - #{e.message}"
+          )
         end
 
         def public_chat_session_params

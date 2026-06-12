@@ -12,17 +12,17 @@ module Aria
 
       classification = Classifier.new(message).call
 
-      user_message = nil
+      user_message = build_user_message
+      response = PublicResponseBuilder.new(message: message, classification: classification).call
       assistant_message = nil
-      response = nil
 
       PublicChatSession.transaction do
-        user_message = session.chat_messages.create!(role: "user", content: message, metadata: { source: "public_chat" })
-        response = PublicResponseBuilder.new(message: message, classification: classification).call
+        user_message.save!
         assistant_message = session.chat_messages.create!(role: "assistant", content: response.content, metadata: response.metadata)
         update_session!(classification)
-        record_audit_events!(classification, response)
       end
+
+      record_audit_events_safely(classification, response)
 
       Result.new(
         session: session.reload,
@@ -36,6 +36,13 @@ module Aria
 
     attr_reader :session, :message
 
+    def build_user_message
+      user_message = session.chat_messages.build(role: "user", content: message, metadata: { source: "public_chat" })
+      raise ArgumentError, user_message.errors.full_messages.to_sentence unless user_message.valid?
+
+      user_message
+    end
+
     def update_session!(classification)
       session.update!(
         status: classification.handoff_required ? "handoff_recommended" : "open",
@@ -48,6 +55,14 @@ module Aria
           last_safety_flags: classification.safety_flags,
           matched_plan_rule_id: classification.matched_plan_rule&.id
         )
+      )
+    end
+
+    def record_audit_events_safely(classification, response)
+      record_audit_events!(classification, response)
+    rescue StandardError => e
+      Rails.logger.warn(
+        "[ARIA] Failed to record public chat audit events for session #{session.id}: #{e.class} - #{e.message}"
       )
     end
 

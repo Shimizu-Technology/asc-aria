@@ -6,6 +6,15 @@ class PlanRule < ApplicationRecord
 
   scope :active, -> { where(active: true) }
   scope :for_employer, ->(employer_name) { where("LOWER(employer_name) = ?", employer_name.to_s.downcase) }
+  scope :matching_public_message, lambda { |message|
+    normalized_message = message.to_s.downcase
+
+    where(
+      "LOWER(?) LIKE '%' || LOWER(employer_name) || '%' OR LOWER(?) LIKE '%' || LOWER(plan_name) || '%'",
+      normalized_message,
+      normalized_message
+    )
+  }
 
   def loan_summary
     return "Loans are not allowed under this seeded sample plan." unless loans_allowed?

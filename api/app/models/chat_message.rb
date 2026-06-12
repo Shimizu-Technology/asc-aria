@@ -1,10 +1,11 @@
 class ChatMessage < ApplicationRecord
   ROLES = %w[user assistant system staff].freeze
+  MAX_CONTENT_LENGTH = 2_000
 
   belongs_to :chat_session, polymorphic: true
 
   validates :role, presence: true, inclusion: { in: ROLES }
-  validates :content, presence: true, length: { maximum: 2_000 }
+  validates :content, presence: true, length: { maximum: MAX_CONTENT_LENGTH }
   validates :occurred_at, presence: true
 
   before_validation :set_occurred_at, on: :create
