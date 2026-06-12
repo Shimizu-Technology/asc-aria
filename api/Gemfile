@@ -34,6 +34,9 @@ gem "rack-cors"
 gem "rack-attack"
 
 group :development, :test do
+  # Load local .env files for prototype development and tests
+  gem "dotenv-rails", require: "dotenv/load"
+
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
 

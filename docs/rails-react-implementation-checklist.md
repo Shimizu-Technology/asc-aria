@@ -161,8 +161,9 @@ Attachment model can wait unless we decide to demo upload placeholders:
 ### Public website / ARIA
 
 - [ ] Existing ASC homepage stays polished.
-- [x] Public ARIA chat panel calls Rails API.
+- [x] Public ARIA bottom-right widget calls Rails API.
 - [x] General question returns seeded educational answer.
+- [x] 401(k)/retirement-plan type questions use broader curated public knowledge.
 - [x] Account-specific question triggers secure handoff CTA.
 
 ### Secure support
@@ -224,7 +225,7 @@ Classify messages as:
 
 ### Response strategy
 
-- [x] General education: answer from seeded knowledge, with optional OpenRouter grounded in seeded context.
+- [x] General education: answer from seeded knowledge, including plan-type basics, with optional OpenRouter grounded in seeded context.
 - [x] Form routing: point to forms section and secure support for sensitive details.
 - [x] Plan-specific: use seeded fake `PlanRule` with caveats.
 - [ ] Participant-specific: create secure handoff / staff review. Current PR returns secure handoff CTA only.

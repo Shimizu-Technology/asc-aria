@@ -19,7 +19,7 @@ bin/rails db:prepare
 bin/rails server -p 3000
 ```
 
-Optional OpenRouter-backed public ARIA responses:
+Optional OpenRouter-backed public ARIA responses. In local development/test, Rails loads `api/.env` through `dotenv-rails`:
 
 ```bash
 OPENROUTER_API_KEY=...

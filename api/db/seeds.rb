@@ -125,6 +125,30 @@ knowledge_entries = [
     source_label: "Seeded ASC educational prototype content"
   },
   {
+    category: "retirement_plan_basics",
+    title: "Common retirement plan categories",
+    content: "Common employer retirement plan categories include 401(k) plans for many private employers, 403(b) plans for certain nonprofit or education employers, profit-sharing or defined-contribution arrangements, and government retirement plans. The exact options available to a participant depend on the employer's adopted plan documents.",
+    source_label: "Seeded ASC educational prototype content"
+  },
+  {
+    category: "401k_plan_types",
+    title: "Common 401(k) plan features and types",
+    content: "Public education can describe common 401(k) variations such as traditional pre-tax 401(k) contributions, Roth 401(k) contributions when offered, safe harbor 401(k) designs, SIMPLE 401(k) plans for some smaller employers, and individual or solo 401(k) plans for self-employed owners. A single employer plan may combine several features, and ASC staff should confirm the actual adopted plan provisions.",
+    source_label: "Seeded ASC educational prototype content"
+  },
+  {
+    category: "401k_plan_types",
+    title: "Traditional versus Roth contribution basics",
+    content: "Traditional 401(k) contributions are generally made before taxes and may be taxable when distributed. Roth 401(k) contributions are generally made after taxes and may allow qualified tax-free withdrawals. ARIA should keep this educational and avoid tax advice; participants should confirm their plan options and consult qualified advisors for tax questions.",
+    source_label: "Seeded ASC educational prototype content"
+  },
+  {
+    category: "401k_plan_types",
+    title: "Employer contribution basics",
+    content: "Some employer plans include matching, safe harbor, discretionary, or profit-sharing contributions. Whether those features exist, how they vest, and how they affect a participant's account depends on the employer's plan documents and ASC review.",
+    source_label: "Seeded ASC educational prototype content"
+  },
+  {
     category: "secure_support",
     title: "Account-specific escalation",
     content: "When a participant asks about personal balance, eligibility, loan amount, or active loan count, ARIA should move the conversation to secure support so ASC can verify identity and account details.",

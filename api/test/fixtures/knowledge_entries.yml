@@ -6,6 +6,22 @@ loan_basics:
   source_url:
   active: true
 
+plan_types:
+  title: Common 401(k) plan features and types
+  category: 401k_plan_types
+  content: Common 401(k) variations include traditional pre-tax 401(k) contributions, Roth 401(k) contributions when offered, safe harbor 401(k) designs, SIMPLE 401(k) plans, and individual or solo 401(k) plans.
+  source_label: Seeded ASC educational prototype content
+  source_url:
+  active: true
+
+retirement_plan_basics:
+  title: Common retirement plan categories
+  category: retirement_plan_basics
+  content: Common employer retirement plan categories include 401(k), 403(b), profit-sharing or defined-contribution arrangements, and government retirement plans.
+  source_label: Seeded ASC educational prototype content
+  source_url:
+  active: true
+
 secure_escalation:
   title: Account-specific escalation
   category: secure_support

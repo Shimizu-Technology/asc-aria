@@ -45,7 +45,7 @@ Goal: show how ARIA would answer general questions and route account-specific qu
 
 Build:
 
-- public ARIA chat panel — implemented with Rails-backed sessions/messages
+- public ARIA bottom-right chat widget — implemented with Rails-backed sessions/messages
 - persisted public chat session — implemented
 - deterministic intent detection for known sensitive/account-specific patterns — implemented
 - local seeded knowledge for retirement-plan/general ASC information — implemented
@@ -384,7 +384,7 @@ Build/update screens:
 
 ```text
 Public ASC homepage
-Public ARIA chat panel
+Public ARIA chat widget
 Secure verification page
 Secure chat page
 Staff support sessions queue

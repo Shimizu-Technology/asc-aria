@@ -25,6 +25,15 @@ class Aria::ClassifierTest < ActiveSupport::TestCase
     assert_equal plan_rules(:bank_of_mila), result.matched_plan_rule
   end
 
+  test "general retirement questions include plan type knowledge" do
+    result = Aria::Classifier.new("What types of 401(k) plans are there?").call
+
+    assert_equal "general_education", result.intent
+    assert_not result.handoff_required
+    assert_includes result.knowledge_categories, "401k_plan_types"
+    assert_includes result.knowledge_categories, "retirement_plan_basics"
+  end
+
   test "classifies advice requests as high risk escalation" do
     result = Aria::Classifier.new("What fund should I invest in to guarantee returns?").call
 
