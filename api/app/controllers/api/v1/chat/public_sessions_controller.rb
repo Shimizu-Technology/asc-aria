@@ -3,19 +3,23 @@ module Api
     module Chat
       class PublicSessionsController < Api::V1::BaseController
         def create
-          session = PublicChatSession.create!(public_chat_session_params)
-          welcome = session.chat_messages.create!(
-            role: "assistant",
-            content: "Buenos! I can help with forms, general 401(k) questions, and next steps. Please do not enter SSNs, account numbers, or other sensitive personal information in public chat.",
-            metadata: { response_mode: "welcome", ai_used: false }
-          )
-          session.touch_last_message!(welcome.occurred_at)
+          session = nil
 
-          AuditEvent.record!(
-            action: "public_chat_session_created",
-            auditable: session,
-            metadata: { fake_data_only: true, source: "public_aria" }
-          )
+          PublicChatSession.transaction do
+            session = PublicChatSession.create!(public_chat_session_params)
+            welcome = session.chat_messages.create!(
+              role: "assistant",
+              content: "Buenos! I can help with forms, general 401(k) questions, and next steps. Please do not enter SSNs, account numbers, or other sensitive personal information in public chat.",
+              metadata: { response_mode: "welcome", ai_used: false }
+            )
+            session.touch_last_message!(welcome.occurred_at)
+
+            AuditEvent.record!(
+              action: "public_chat_session_created",
+              auditable: session,
+              metadata: { fake_data_only: true, source: "public_aria" }
+            )
+          end
 
           render json: { public_chat_session: session.as_api_json }, status: :created
         end

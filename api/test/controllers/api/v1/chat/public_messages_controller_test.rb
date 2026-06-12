@@ -40,6 +40,26 @@ class Api::V1::Chat::PublicMessagesControllerTest < ActionDispatch::IntegrationT
     assert_includes assistant_message.fetch("content"), "continue securely"
   end
 
+  test "rate limits anonymous public messages" do
+    limit = Integer(ENV.fetch("PUBLIC_CHAT_MESSAGE_RATE_LIMIT", "60"))
+    headers = { "REMOTE_ADDR" => "203.0.113.11" }
+
+    limit.times do |index|
+      post api_v1_chat_public_session_messages_url(public_chat_sessions(:open_session).token),
+           params: { message: { content: "General 401(k) question #{index}" } },
+           headers: headers
+      assert_response :created
+    end
+
+    post api_v1_chat_public_session_messages_url(public_chat_sessions(:open_session).token),
+         params: { message: { content: "One more general question" } },
+         headers: headers
+
+    assert_response :too_many_requests
+    body = JSON.parse(response.body)
+    assert_includes body.fetch("error"), "Rate limit exceeded"
+  end
+
   test "rejects overlong message" do
     post api_v1_chat_public_session_messages_url(public_chat_sessions(:open_session).token), params: {
       message: { content: "a" * 2_001 }

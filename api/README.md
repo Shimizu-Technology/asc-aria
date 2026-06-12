@@ -32,6 +32,15 @@ OPENROUTER_SITE_URL=http://localhost:5173
 
 When `OPENROUTER_API_KEY` is unset, public ARIA returns deterministic/template fallback responses.
 
+Anonymous public chat writes are throttled with Rack::Attack:
+
+```bash
+RACK_ATTACK_ENABLED=true
+PUBLIC_CHAT_SESSION_RATE_LIMIT=20
+PUBLIC_CHAT_MESSAGE_RATE_LIMIT=60
+PUBLIC_CHAT_RATE_PERIOD_SECONDS=60
+```
+
 Health check:
 
 ```text

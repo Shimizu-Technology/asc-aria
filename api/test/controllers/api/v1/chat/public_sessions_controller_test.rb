@@ -25,6 +25,22 @@ class Api::V1::Chat::PublicSessionsControllerTest < ActionDispatch::IntegrationT
     assert body.fetch("public_chat_session").fetch("token").present?
   end
 
+  test "rate limits anonymous public session creation" do
+    limit = Integer(ENV.fetch("PUBLIC_CHAT_SESSION_RATE_LIMIT", "20"))
+    headers = { "REMOTE_ADDR" => "203.0.113.10" }
+
+    limit.times do
+      post api_v1_chat_public_sessions_url, headers: headers
+      assert_response :created
+    end
+
+    post api_v1_chat_public_sessions_url, headers: headers
+
+    assert_response :too_many_requests
+    body = JSON.parse(response.body)
+    assert_includes body.fetch("error"), "Rate limit exceeded"
+  end
+
   test "shows public chat session by token" do
     get api_v1_chat_public_session_url(public_chat_sessions(:open_session).token)
 

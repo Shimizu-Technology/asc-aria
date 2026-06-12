@@ -87,7 +87,7 @@ OPENROUTER_API_KEY=...
 OPENROUTER_MODEL=google/gemini-2.5-flash
 ```
 
-The model is configurable via `OPENROUTER_MODEL`. If no OpenRouter key is present, public ARIA uses deterministic/template fallback responses.
+The model is configurable via `OPENROUTER_MODEL`. If no OpenRouter key is present, public ARIA uses deterministic/template fallback responses. Anonymous public chat write endpoints are rate-limited with Rack::Attack (`PUBLIC_CHAT_SESSION_RATE_LIMIT`, `PUBLIC_CHAT_MESSAGE_RATE_LIMIT`, and `PUBLIC_CHAT_RATE_PERIOD_SECONDS`).
 
 API health check:
 
