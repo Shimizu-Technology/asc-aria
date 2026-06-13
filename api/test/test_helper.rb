@@ -19,5 +19,23 @@ module ActiveSupport
     fixtures :all
 
     # Add more helper methods to be used by all tests here...
+    def with_replaced_method(receiver, method_name, replacement)
+      singleton_class = class << receiver; self; end
+      had_singleton_method = singleton_class.method_defined?(method_name) || singleton_class.private_method_defined?(method_name)
+      original_method = receiver.method(method_name) if receiver.respond_to?(method_name, true)
+
+      singleton_class.define_method(method_name, replacement)
+      yield
+    ensure
+      if had_singleton_method && original_method
+        singleton_class.define_method(method_name, original_method)
+      else
+        begin
+          singleton_class.remove_method(method_name)
+        rescue NameError
+          nil
+        end
+      end
+    end
   end
 end

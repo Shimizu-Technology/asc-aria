@@ -29,17 +29,7 @@ module SecureSupport
         challenge.update!(status: "sent", sent_at: Time.current, metadata: challenge.metadata.merge(unmatched_contact: true))
       end
 
-      AuditEvent.record!(
-        action: "verification_challenge_requested",
-        auditable: challenge,
-        metadata: {
-          handoff_token_id: handoff_token.id,
-          channel: channel,
-          contact_masked: challenge.contact_masked,
-          matched_directory_entry: participant.present?,
-          fake_data_only: true
-        }
-      )
+      record_audit_event_safely(challenge: challenge, participant: participant)
 
       Result.new(
         challenge: challenge,
@@ -73,6 +63,22 @@ module SecureSupport
         code_digest: VerificationChallenge.digest_code(token: token, code: code),
         metadata: { fake_data_only: true }
       )
+    end
+
+    def record_audit_event_safely(challenge:, participant:)
+      AuditEvent.record!(
+        action: "verification_challenge_requested",
+        auditable: challenge,
+        metadata: {
+          handoff_token_id: handoff_token.id,
+          channel: channel,
+          contact_masked: challenge.contact_masked,
+          matched_directory_entry: participant.present?,
+          fake_data_only: true
+        }
+      )
+    rescue StandardError => e
+      Rails.logger.warn("[SecureSupport::ChallengeCreator] Audit event failed: #{e.class}: #{e.message}")
     end
 
     def generate_code

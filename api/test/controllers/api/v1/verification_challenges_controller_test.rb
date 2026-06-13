@@ -43,6 +43,24 @@ class Api::V1::VerificationChallengesControllerTest < ActionDispatch::Integratio
     assert AuditEvent.where(action: "verification_challenge_requested").exists?
   end
 
+  test "challenge request succeeds when audit recording fails after persistence" do
+    assert_difference -> { VerificationChallenge.count }, 1 do
+      with_replaced_method(AuditEvent, :record!, ->(**_kwargs) { raise StandardError, "audit unavailable" }) do
+        post api_v1_handoff_verification_challenges_url(@handoff.token), params: {
+          verification_challenge: {
+            channel: "email",
+            contact: "malia.demo@example.test"
+          }
+        }
+      end
+    end
+
+    assert_response :created
+    body = JSON.parse(response.body)
+    assert_equal SecureSupport::ChallengeCreator::GENERIC_MESSAGE, body.fetch("message")
+    assert_equal "sent", body.fetch("challenge").fetch("status")
+  end
+
   test "verifies challenge and creates secure session support request" do
     post api_v1_handoff_verification_challenges_url(@handoff.token), params: {
       verification_challenge: {

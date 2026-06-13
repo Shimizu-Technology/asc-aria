@@ -43,11 +43,32 @@ module StaffAuthenticatable
 
     user = User.includes(:role).find_by(clerk_id: clerk_id)
     user ||= find_invited_user_by_email(email)
+    user = link_clerk_id_if_needed(user, clerk_id)
     return nil unless user
 
-    user.update!(clerk_id: clerk_id) if user.clerk_id.blank?
     user.update!(last_sign_in_at: Time.current, invitation_status: "accepted", accepted_at: user.accepted_at || Time.current)
     user
+  end
+
+  def link_clerk_id_if_needed(user, clerk_id)
+    return nil unless user
+    return user if user.clerk_id == clerk_id
+    return nil if user.clerk_id.present?
+
+    user.with_lock do
+      user.reload
+      if user.clerk_id == clerk_id
+        user
+      elsif user.clerk_id.present?
+        nil
+      else
+        user.update!(clerk_id: clerk_id)
+        user
+      end
+    end
+  rescue ActiveRecord::RecordNotUnique => e
+    Rails.logger.warn("[StaffAuthenticatable] Clerk linking race recovered for user_id=#{user&.id}: #{e.class}")
+    User.includes(:role).find_by(clerk_id: clerk_id)
   end
 
   def find_invited_user_by_email(email)

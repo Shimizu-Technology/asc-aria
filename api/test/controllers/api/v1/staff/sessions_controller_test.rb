@@ -48,6 +48,22 @@ class Api::V1::Staff::SessionsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "links invited staff user on first Clerk bearer login" do
+    staff_user = users(:staff_user)
+    clerk_id = "clerk_staff_#{SecureRandom.hex(8)}"
+    staff_user.update!(clerk_id: nil, invitation_status: "pending", accepted_at: nil)
+
+    with_replaced_method(ClerkAuth, :verify, ->(_token) { { "sub" => clerk_id, "email" => staff_user.email } }) do
+      get api_v1_staff_sessions_url, headers: { "Authorization" => "Bearer clerk-jwt" }
+    end
+
+    assert_response :success
+    staff_user.reload
+    assert_equal clerk_id, staff_user.clerk_id
+    assert_equal "accepted", staff_user.invitation_status
+    assert_not_nil staff_user.accepted_at
+  end
+
   test "lists staff queue with clerk test token" do
     get api_v1_staff_sessions_url, headers: { "Authorization" => "Bearer test_token_#{users(:staff_user).id}" }
 
