@@ -23,7 +23,7 @@ See:
 - Imported public ASC content index covering 45 public pages/posts, with source links and a staged 131-image public asset library for private review
 - ASC-style responsive header with Account Login, Open Account, Contact Us, Request Proposal, public navigation, and discreet demo controls
 - Participant support hub task cards
-- Rails-backed public ARIA assistant with controlled responses, seeded knowledge/plan-rule context, optional OpenRouter, and account-specific secure handoff CTA
+- Rails-backed bottom-right public ARIA chat widget with controlled responses, seeded knowledge/plan-rule context, optional OpenRouter, and account-specific secure handoff CTA
 - Fake authenticated secure support page
 - Saved-session participant chat mockup
 - Staff/call-center dashboard queue
@@ -79,7 +79,7 @@ bin/rails db:prepare
 bin/rails server -p 3000
 ```
 
-Optional OpenRouter-backed public ARIA responses:
+Optional OpenRouter-backed public ARIA responses. Rails loads `api/.env` locally via `dotenv-rails`:
 
 ```bash
 # api/.env or shell environment

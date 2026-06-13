@@ -1,5 +1,5 @@
-import type { FormEvent, MouseEvent } from 'react'
-import { useMemo, useState } from 'react'
+import type { FormEvent, MouseEvent, RefObject } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import { ascImageAssets, ascPages } from './ascSiteData'
 
@@ -38,6 +38,24 @@ type PublicChatSession = {
   handoff_required: boolean
   handoff_reason?: string | null
   messages: PublicChatMessage[]
+}
+
+type PublicAriaWidgetProps = {
+  isOpen: boolean
+  isExpanded: boolean
+  messages: PublicChatMessage[]
+  chatInput: string
+  isSending: boolean
+  chatStatus: string | null
+  chatScrollRef: RefObject<HTMLDivElement | null>
+  onOpen: () => void
+  onClose: () => void
+  onToggleExpanded: () => void
+  onInputChange: (value: string) => void
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void
+  onSampleGeneral: () => void
+  onSampleHandoff: () => void
+  onSecure: () => void
 }
 
 const asset = (name: string) => `/asc-assets/${name}`
@@ -421,6 +439,10 @@ function PublicSiteView({ onSecure }: { onSecure: () => void }) {
   const [chatInput, setChatInput] = useState('')
   const [isChatSending, setIsChatSending] = useState(false)
   const [chatStatus, setChatStatus] = useState<string | null>(null)
+  const [isChatOpen, setIsChatOpen] = useState(false)
+  const [isChatExpanded, setIsChatExpanded] = useState(false)
+  const [pendingUserMessage, setPendingUserMessage] = useState<PublicChatMessage | null>(null)
+  const chatScrollRef = useRef<HTMLDivElement | null>(null)
 
   const visibleContentPages = useMemo(() => {
     if (contentFilter === 'All') return ascPages
@@ -429,20 +451,55 @@ function PublicSiteView({ onSecure }: { onSecure: () => void }) {
 
   const featuredContentPage = visibleContentPages[0] ?? ascPages[0]
   const showcasedAssets = ascImageAssets.slice(0, 48)
-  const publicChatMessages = chatSession?.messages ?? [
+  const persistedPublicChatMessages = chatSession?.messages ?? [
     {
       id: -1,
       role: 'assistant' as const,
       content: 'Buenos! I can help with forms, general 401(k) questions, and next steps. Please keep SSNs and account numbers out of public chat.',
     },
   ]
+  const publicChatMessages = pendingUserMessage
+    ? [...persistedPublicChatMessages, pendingUserMessage]
+    : persistedPublicChatMessages
+
+  useEffect(() => {
+    if (!isChatOpen) return
+
+    const animationFrame = window.requestAnimationFrame(() => {
+      const chatScroller = chatScrollRef.current
+      if (!chatScroller) return
+      chatScroller.scrollTo({ top: chatScroller.scrollHeight, behavior: 'smooth' })
+    })
+
+    return () => window.cancelAnimationFrame(animationFrame)
+  }, [isChatOpen, isChatSending, publicChatMessages.length])
+
+  useEffect(() => {
+    if (!isChatOpen) return
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsChatOpen(false)
+    }
+
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [isChatOpen])
 
   const submitPublicChatMessage = async (messageOverride?: string) => {
     const content = (messageOverride ?? chatInput).trim()
     if (!content || isChatSending) return
 
+    const optimisticMessage: PublicChatMessage = {
+      id: -Date.now(),
+      role: 'user',
+      content,
+    }
+
+    setIsChatOpen(true)
     setIsChatSending(true)
     setChatStatus(null)
+    setPendingUserMessage(optimisticMessage)
+    setChatInput('')
 
     try {
       const session = chatSession ?? await (async () => {
@@ -452,14 +509,12 @@ function PublicSiteView({ onSecure }: { onSecure: () => void }) {
       })()
       const updatedSession = await sendPublicChatMessage(session.token, content)
       setChatSession(updatedSession)
-      setChatInput('')
-      if (updatedSession.handoff_required) {
-        setChatStatus('ARIA recommends secure support for this question.')
-      } else {
-        setChatStatus('ARIA answered using approved prototype context.')
-      }
+      setPendingUserMessage(null)
+      setChatStatus(updatedSession.handoff_required ? 'This question needs secure support.' : null)
     } catch {
-      setChatStatus('ARIA is running in offline preview mode. Please start the Rails API to try the live prototype chat.')
+      setPendingUserMessage(null)
+      setChatInput(content)
+      setChatStatus('ARIA could not connect. Please make sure the Rails API is running and try again.')
     } finally {
       setIsChatSending(false)
     }
@@ -502,40 +557,31 @@ function PublicSiteView({ onSecure }: { onSecure: () => void }) {
               <span>ARIA support</span>
             </div>
             <h2>Answers first. Secure handoff when it becomes personal.</h2>
-            <div className="chat-window mini" aria-live="polite">
-              {publicChatMessages.map((message) => {
-                const messageClass = message.role === 'assistant' ? 'aria' : message.role === 'system' ? 'system-note' : message.role
-
-                return (
-                  <p className={`message ${messageClass}`} key={message.id}>
-                    {message.content}
-                  </p>
-                )
-              })}
-              {isChatSending && <p className="message system-note">ARIA is checking approved prototype context.</p>}
+            <div className="aria-preview-flow" aria-label="ARIA support workflow preview">
+              <div>
+                <span>01</span>
+                <strong>Ask publicly</strong>
+                <p>General retirement, form, and plan-education questions stay in the public widget.</p>
+              </div>
+              <div>
+                <span>02</span>
+                <strong>Detect risk</strong>
+                <p>Balances, eligibility, loan amounts, and personal account details are not answered publicly.</p>
+              </div>
+              <div>
+                <span>03</span>
+                <strong>Move securely</strong>
+                <p>ARIA routes the participant into a saved, staff-reviewed support flow.</p>
+              </div>
             </div>
-            <form className="public-chat-form" onSubmit={handlePublicChatSubmit}>
-              <label className="sr-only" htmlFor="public-aria-question">Ask ARIA a public question</label>
-              <input
-                id="public-aria-question"
-                value={chatInput}
-                onChange={(event) => setChatInput(event.target.value)}
-                placeholder="Ask about 401(k) loans or forms"
-                disabled={isChatSending}
-                maxLength={2000}
-              />
-              <button className="secure-button" type="submit" disabled={isChatSending || chatInput.trim().length === 0}>
-                Ask ARIA
-              </button>
-            </form>
             <div className="handoff-actions">
-              <button className="ghost-button" onClick={() => { setShowGeneralInfo(true); void submitPublicChatMessage('What is a 401(k) loan?') }}>General info only</button>
-              <button className="ghost-button" onClick={() => { setShowGeneralInfo(true); void submitPublicChatMessage('I work for Bank of Mila. How much can I borrow from my 401(k)?') }}>Try secure handoff</button>
-              <button className="secure-button" onClick={onSecure}>Continue securely</button>
+              <button className="secure-button" onClick={() => setIsChatOpen(true)}>Open ARIA chat</button>
+              <button className="ghost-button" onClick={() => { setShowGeneralInfo(true); void submitPublicChatMessage('What types of 401(k) plans are there?') }}>Ask a sample question</button>
+              <button className="ghost-button" onClick={() => { setShowGeneralInfo(true); void submitPublicChatMessage('I work for Bank of Mila. How much can I borrow from my 401(k)?') }}>Test secure handoff</button>
             </div>
             {(showGeneralInfo || chatStatus) && (
               <div className="inline-info-card" role="status">
-                <strong>{chatStatus ?? 'General 401(k) loan education stays public.'}</strong>
+                <strong>{chatStatus ?? 'General retirement education stays public.'}</strong>
                 <span>Personal eligibility, balances, and active loan counts move to secure support.</span>
               </div>
             )}
@@ -802,7 +848,146 @@ function PublicSiteView({ onSecure }: { onSecure: () => void }) {
           ))}
         </div>
       </section>
+
+      <PublicAriaWidget
+        isOpen={isChatOpen}
+        isExpanded={isChatExpanded}
+        messages={publicChatMessages}
+        chatInput={chatInput}
+        isSending={isChatSending}
+        chatStatus={chatStatus}
+        chatScrollRef={chatScrollRef}
+        onOpen={() => setIsChatOpen(true)}
+        onClose={() => setIsChatOpen(false)}
+        onToggleExpanded={() => setIsChatExpanded((current) => !current)}
+        onInputChange={setChatInput}
+        onSubmit={handlePublicChatSubmit}
+        onSampleGeneral={() => { setShowGeneralInfo(true); void submitPublicChatMessage('What types of 401(k) plans are there?') }}
+        onSampleHandoff={() => { setShowGeneralInfo(true); void submitPublicChatMessage('I work for Bank of Mila. How much can I borrow from my 401(k)?') }}
+        onSecure={onSecure}
+      />
     </>
+  )
+}
+
+function PublicAriaWidget({
+  isOpen,
+  isExpanded,
+  messages,
+  chatInput,
+  isSending,
+  chatStatus,
+  chatScrollRef,
+  onOpen,
+  onClose,
+  onToggleExpanded,
+  onInputChange,
+  onSubmit,
+  onSampleGeneral,
+  onSampleHandoff,
+  onSecure,
+}: PublicAriaWidgetProps) {
+  if (!isOpen) {
+    return (
+      <div className="aria-widget-shell collapsed">
+        <button className="aria-chat-launcher" onClick={onOpen} aria-label="Open ARIA public chat">
+          <span className="launcher-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" role="img" focusable="false">
+              <path d="M4.75 5.75A4.75 4.75 0 0 1 9.5 1h5A4.75 4.75 0 0 1 19.25 5.75v5.5A4.75 4.75 0 0 1 14.5 16h-2.15l-4.37 3.35A.9.9 0 0 1 6.55 18.6V16A4.75 4.75 0 0 1 1.8 11.25v-5.5Z" />
+              <path d="M8.25 8.25h7.5M8.25 11.25h4.5" />
+            </svg>
+          </span>
+          <span>
+            <strong>Ask ARIA</strong>
+            <small>General retirement questions</small>
+          </span>
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <aside className={`aria-widget-shell open${isExpanded ? ' expanded' : ''}`} aria-label="ARIA public support chat">
+      <div className="aria-widget-panel">
+        <header className="aria-widget-header">
+          <div>
+            <span className="card-topline compact"><span className="status-dot" />ARIA support</span>
+            <h2>Ask publicly. Continue securely when needed.</h2>
+          </div>
+          <div className="aria-widget-header-actions">
+            <button
+              className="aria-widget-icon-button"
+              onClick={onToggleExpanded}
+              aria-label={isExpanded ? 'Shrink ARIA chat' : 'Expand ARIA chat'}
+              aria-pressed={isExpanded}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                {isExpanded ? (
+                  <path d="M9 3v6H3M15 21v-6h6M4 8l5-5M20 16l-5 5" />
+                ) : (
+                  <path d="M4 10V4h6M20 14v6h-6M4 4l7 7M20 20l-7-7" />
+                )}
+              </svg>
+            </button>
+            <button className="aria-widget-icon-button" onClick={onClose} aria-label="Close ARIA chat">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="m6 6 12 12M18 6 6 18" />
+              </svg>
+            </button>
+          </div>
+        </header>
+
+        <div className="aria-widget-messages" ref={chatScrollRef} aria-live="polite" aria-label="ARIA conversation transcript">
+          {messages.map((message) => {
+            const messageClass = message.role === 'assistant' ? 'aria' : message.role === 'system' ? 'system-note' : message.role
+
+            return (
+              <p className={`message ${messageClass}`} key={message.id}>
+                {message.content}
+              </p>
+            )
+          })}
+          {isSending && (
+            <div className="message aria typing-message" role="status" aria-label="ARIA is thinking">
+              <span>ARIA is thinking</span>
+              <span className="typing-dots" aria-hidden="true">
+                <i />
+                <i />
+                <i />
+              </span>
+            </div>
+          )}
+        </div>
+
+        <form className="public-chat-form widget-form" onSubmit={onSubmit}>
+          <label className="sr-only" htmlFor="public-aria-widget-question">Ask ARIA a public question</label>
+          <input
+            id="public-aria-widget-question"
+            value={chatInput}
+            onChange={(event) => onInputChange(event.target.value)}
+            placeholder="Ask about 401(k) plans or forms"
+            disabled={isSending}
+            maxLength={2000}
+          />
+          <button className="secure-button" type="submit" disabled={isSending || chatInput.trim().length === 0}>
+            Ask
+          </button>
+        </form>
+
+        <div className="aria-widget-actions" aria-label="ARIA quick actions">
+          <button className="ghost-button" onClick={onSampleGeneral} disabled={isSending}>Plan types</button>
+          <button className="ghost-button" onClick={onSampleHandoff} disabled={isSending}>Secure handoff test</button>
+          <button className="secure-button" onClick={onSecure}>Continue securely</button>
+        </div>
+
+        {chatStatus && (
+          <div className="inline-info-card widget-status" role="status">
+            <strong>{chatStatus}</strong>
+            <span>Do not enter SSNs, account numbers, dates of birth, or other sensitive details in public chat.</span>
+          </div>
+        )}
+      </div>
+    </aside>
   )
 }
 

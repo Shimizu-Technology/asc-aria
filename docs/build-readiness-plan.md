@@ -23,7 +23,7 @@ Already done:
 - Rails-backed prototype direction documented in `docs/rails-backed-prototype-plan.md`.
 - Frontend moved into `web/` and Rails API foundation added under `api/`.
 - Fake users/roles, fake Airtable-style plan rules, controlled ARIA knowledge entries, and audit-event API support added for the first foundation PR.
-- Public ARIA chat sessions/messages, deterministic classification, template fallback responses, optional OpenRouter via Rails, and secure handoff CTA added for the controlled chat PR.
+- Public ARIA chat sessions/messages, deterministic classification, template fallback responses, optional OpenRouter via Rails, secure handoff CTA, bottom-right chat widget UX, and broader public retirement-plan knowledge added for the controlled chat/widget PRs.
 
 ## Strategic build decision
 

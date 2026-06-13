@@ -44,7 +44,7 @@ module Aria
           handoff_reason: "Asked for account-specific eligibility, balance, or borrowing details.",
           topic: "Account-specific retirement plan support",
           matched_plan_rule: plan_rule,
-          knowledge_categories: %w[401k_loans secure_support disclaimers],
+          knowledge_categories: %w[401k_loans 401k_plan_types retirement_plan_basics secure_support disclaimers],
           safety_flags: [ "requires_identity_or_account_verification" ]
         )
       end
@@ -68,7 +68,7 @@ module Aria
           handoff_reason: nil,
           topic: "Seeded plan-rule explanation",
           matched_plan_rule: plan_rule,
-          knowledge_categories: %w[401k_loans secure_support disclaimers],
+          knowledge_categories: %w[401k_loans 401k_plan_types retirement_plan_basics secure_support disclaimers],
           safety_flags: []
         )
       end
@@ -79,7 +79,7 @@ module Aria
         handoff_reason: nil,
         topic: "General retirement education",
         matched_plan_rule: plan_rule,
-        knowledge_categories: %w[401k_loans forms secure_support disclaimers],
+        knowledge_categories: %w[401k_loans 401k_plan_types retirement_plan_basics forms secure_support disclaimers],
         safety_flags: []
       )
     end

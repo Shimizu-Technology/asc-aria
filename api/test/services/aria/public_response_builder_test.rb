@@ -69,6 +69,47 @@ class Aria::PublicResponseBuilderTest < ActiveSupport::TestCase
     assert response.content.end_with?("…")
   end
 
+  test "falls back with useful plan type education when OpenRouter is not configured" do
+    classification = Aria::Classifier.new("What types of 401(k) plans are there?").call
+    client = FakeClient.new(configured: false)
+
+    response = Aria::PublicResponseBuilder.new(
+      message: "What types of 401(k) plans are there?",
+      classification: classification,
+      client: client
+    ).call
+
+    assert_empty client.calls
+    assert_equal false, response.metadata.fetch(:ai_used)
+    assert_equal "template_fallback", response.metadata.fetch(:response_mode)
+    assert_includes response.content, "traditional pre-tax"
+    assert_includes response.content, "Roth 401(k)"
+    assert_includes response.content, "safe harbor"
+  end
+
+  test "does not treat generic words as plan type questions" do
+    classification = Aria::Classifier.new("Can you explain in simple terms how 401(k) loans work?").call
+    client = FakeClient.new(configured: false)
+
+    response = Aria::PublicResponseBuilder.new(
+      message: "Can you explain in simple terms how 401(k) loans work?",
+      classification: classification,
+      client: client
+    ).call
+
+    assert_includes response.content, "401(k) loan"
+    assert_not_includes response.content, "SIMPLE 401(k)"
+
+    classification = Aria::Classifier.new("I'm an individual asking about forms.").call
+    response = Aria::PublicResponseBuilder.new(
+      message: "I'm an individual asking about forms.",
+      classification: classification,
+      client: client
+    ).call
+
+    assert_not_includes response.content, "individual or solo 401(k)"
+  end
+
   test "falls back when OpenRouter is not configured" do
     classification = Aria::Classifier.new("What is a 401(k) loan?").call
     client = FakeClient.new(configured: false)

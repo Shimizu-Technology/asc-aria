@@ -130,13 +130,35 @@ module Aria
     end
 
     def general_education_fallback
-      loan_entry = knowledge_entries.find { |entry| entry.category == "401k_loans" }
       disclaimer = knowledge_entries.find { |entry| entry.category == "disclaimers" }
+      disclaimer_text = disclaimer&.content || "ARIA provides educational support only and does not provide tax, legal, investment, or financial advice."
 
-      [
-        loan_entry&.content || "A 401(k) loan may be available when a plan allows it, but the plan rules and account status determine the actual options.",
-        disclaimer&.content || "ARIA provides educational support only and does not provide tax, legal, investment, or financial advice."
-      ].join(" ")
+      return [ plan_type_fallback_content, disclaimer_text ].join(" ") if plan_type_question?
+
+      educational_entries = knowledge_entries.select { |entry| [ "401k_loans", "retirement_plan_basics" ].include?(entry.category) }
+      body = educational_entries.first(2).map(&:content)
+      body << fallback_general_sentence if body.empty?
+      body << disclaimer_text
+      body.join(" ")
+    end
+
+    def plan_type_fallback_content
+      "Common 401(k) variations include traditional pre-tax 401(k) contributions, Roth 401(k) contributions when offered, safe harbor 401(k) designs, SIMPLE 401(k) plans for some smaller employers, and individual or solo 401(k) plans for self-employed owners. An employer plan can combine several features, so ASC staff should confirm the actual adopted plan provisions."
+    end
+
+    def plan_type_question?
+      normalized_message = message.downcase
+      asks_for_plan_types = normalized_message.match?(/\b(type|types|kind|kinds|variation|variations)\b/) &&
+        normalized_message.match?(/\b(401\(?k\)?|retirement plan|retirement plans|plan|plans)\b/)
+      names_specific_plan_type = normalized_message.match?(
+        /\b(traditional 401\(?k\)?|roth 401\(?k\)?|safe harbor|simple 401\(?k\)?|solo 401\(?k\)?|individual 401\(?k\)?|403\(?b\)?|government plan|profit[- ]sharing)\b/
+      )
+
+      asks_for_plan_types || names_specific_plan_type
+    end
+
+    def fallback_general_sentence
+      "A retirement plan can include different employer-sponsored savings arrangements and features. The exact options depend on the employer's plan documents and ASC review."
     end
 
     def base_metadata
