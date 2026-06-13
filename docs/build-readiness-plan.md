@@ -58,7 +58,8 @@ From Leon/Shimizu Technology:
 
 - confirm the next artifact is the Rails-backed prototype vertical slice
 - repo reorganization into `web/` + `api/` is complete in the foundation branch
-- decide whether to use Clerk demo auth, mock auth, or Rails auth for the next stage
+- use passwordless participant verification for the secure handoff prototype, shaped for Resend email and ClickSend SMS
+- use Clerk invite-only login for ASC staff/admins when implementing production-shaped staff auth
 - decide proposal tier/scope before connecting real systems
 
 ## Recommended immediate next step
@@ -83,7 +84,7 @@ The frontend-only POC should demonstrate:
 - public ARIA widget
 - account-specific question detection
 - “Continue securely” CTA
-- fake authentication/verification screen
+- fake passwordless email/SMS verification screen
 - secure ARIA support page
 - saved-session feel
 - staff dashboard queue
@@ -94,7 +95,7 @@ The frontend-only POC should demonstrate:
 - admin/audit preview
 - mobile and desktop responsive behavior
 
-No real auth, real AI, real Airtable, real Relias, or real participant data should be used in this phase.
+No real participant auth/contact sync, real AI with sensitive context, real Airtable, real Relias, real participant data, or live participant email/SMS should be used in this phase.
 
 ---
 
@@ -153,9 +154,9 @@ node web/scripts/mobile-check.mjs
 4. Include privacy/safety copy warning users not to enter SSN/account numbers in public chat.
 5. Run build and viewport checks.
 
-## Task 3: Fake secure authentication page
+## Task 3: Fake passwordless secure verification page
 
-**Objective:** Demonstrate the transition from public chat to authenticated support without implementing real auth.
+**Objective:** Demonstrate the transition from public chat to passwordless secure support without real participant data or live email/SMS sends.
 
 **Files:**
 
@@ -163,10 +164,11 @@ node web/scripts/mobile-check.mjs
 
 **Steps:**
 
-1. Add a secure-auth screen with:
+1. Add a secure verification screen with:
    - “Continue to secure ARIA support” heading
-   - safe explanation of why authentication is required
-   - fake verification checklist
+   - safe explanation of why ASC needs to verify the participant before account-specific support
+   - fake email/SMS code option shaped for Resend and ClickSend
+   - generic anti-enumeration copy: “If that information matches ASC records, we’ll send a secure code.”
    - button: `Verify and continue`
 2. Preserve context from the public question visually:
    - topic: 401(k) loan
@@ -333,9 +335,13 @@ Role
 ParticipantProfile
 StaffProfile
 PublicChatSession
+ParticipantDirectoryEntry
+SecureAccessSession
 SecureChatSession
 ChatMessage
 HandoffToken
+VerificationChallenge
+OutboundDelivery
 SupportRequest
 StaffReview
 StaffVerifiedFact
@@ -359,7 +365,9 @@ FormSubmissionExport
 
 ```text
 POST /api/v1/handoffs
-POST /api/v1/handoffs/:token/verify_demo
+GET  /api/v1/handoffs/:token
+POST /api/v1/handoffs/:token/verification_challenges
+POST /api/v1/handoffs/:token/verification_challenges/:id/verify
 GET  /api/v1/secure_chat_sessions/:id
 POST /api/v1/secure_chat_sessions/:id/messages
 GET  /api/v1/staff/sessions

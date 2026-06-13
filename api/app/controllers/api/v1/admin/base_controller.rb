@@ -4,11 +4,19 @@ module Api
   module V1
     module Admin
       class BaseController < Api::V1::BaseController
+        include StaffAuthenticatable
+
         before_action :authenticate_admin_api!
 
         private
 
         def authenticate_admin_api!
+          staff_user = staff_user_from_clerk_bearer
+          if staff_user&.staff?
+            @current_user = staff_user
+            return
+          end
+
           configured_token = ENV["ASC_ARIA_ADMIN_API_TOKEN"].to_s
 
           if configured_token.blank?

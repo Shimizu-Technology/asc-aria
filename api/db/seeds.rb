@@ -23,6 +23,33 @@ malia.create_participant_profile!(
   phone: "671-555-0101"
 ) unless malia.participant_profile
 
+participant_directory_entries = [
+  {
+    external_identifier: "DEMO-DIRECTORY-001",
+    display_name: "Malia Santos Demo",
+    email: "malia.demo@example.test",
+    phone: "671-555-0100",
+    employer_name: "Bank of Mila",
+    plan_name: "Bank of Mila 401(k)",
+    metadata: { fake_data_only: true, note: "Seeded passwordless verification demo contact." }
+  },
+  {
+    external_identifier: "DEMO-DIRECTORY-002",
+    display_name: "Tasi Cruz Demo",
+    email: "tasi.demo@example.test",
+    phone: "671-555-0101",
+    employer_name: "Guam Demo Employer",
+    plan_name: "Guam Demo Employer 401(k)",
+    metadata: { fake_data_only: true, note: "Seeded passwordless verification demo contact." }
+  }
+]
+
+participant_directory_entries.each do |attributes|
+  entry = ParticipantDirectoryEntry.find_or_initialize_by(external_identifier: attributes.fetch(:external_identifier))
+  entry.assign_attributes(attributes.merge(status: "active"))
+  entry.save!
+end
+
 staff = User.find_or_initialize_by(email: "staff@example.test")
 staff.assign_attributes(name: "ASC Staff Demo", role: roles.fetch("staff"), status: "active")
 staff.save!
@@ -185,4 +212,4 @@ prototype_seed_event.metadata = {
 prototype_seed_event.occurred_at ||= Time.current
 prototype_seed_event.save!
 
-puts "Seeded #{Role.count} roles, #{User.count} users, #{PlanRule.count} plan rules, #{KnowledgeEntry.count} knowledge entries."
+puts "Seeded #{Role.count} roles, #{User.count} users, #{ParticipantDirectoryEntry.count} participant directory entries, #{PlanRule.count} plan rules, #{KnowledgeEntry.count} knowledge entries."

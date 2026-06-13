@@ -1,9 +1,11 @@
-import type { FormEvent, MouseEvent, RefObject } from 'react'
+import type { FormEvent, MouseEvent, RefObject, ReactNode } from 'react'
+import { SignInButton, UserButton, useAuth } from '@clerk/clerk-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import { ascImageAssets, ascPages } from './ascSiteData'
 
 type View = 'home' | 'secure' | 'staff' | 'admin'
+type VerificationChannel = 'email' | 'sms'
 type StaffState = 'needs_lookup' | 'draft_ready' | 'editing' | 'human_takeover' | 'approved'
 
 type ParticipantTask = {
@@ -40,6 +42,51 @@ type PublicChatSession = {
   messages: PublicChatMessage[]
 }
 
+type HandoffToken = {
+  token: string
+  status: string
+  intent?: string | null
+  topic?: string | null
+  detected_employer_or_plan?: string | null
+  reason_for_handoff?: string | null
+  original_question?: string | null
+  summary?: string | null
+  expires_at?: string | null
+}
+
+type VerificationChallenge = {
+  token: string
+  channel: VerificationChannel
+  contact_masked: string
+  status: string
+  demo_code?: string
+  expires_at?: string | null
+}
+
+type SecureAccessSession = {
+  token: string
+  status: string
+  expires_at?: string | null
+}
+
+type SecureChatSession = {
+  token: string
+  status: string
+  topic?: string | null
+  employer_name?: string | null
+  plan_name?: string | null
+  participant?: {
+    display_name: string
+    employer_name: string
+    plan_name: string
+  }
+  support_request?: {
+    status: string
+    topic?: string | null
+  } | null
+  messages: PublicChatMessage[]
+}
+
 type PublicAriaWidgetProps = {
   isOpen: boolean
   isExpanded: boolean
@@ -56,6 +103,16 @@ type PublicAriaWidgetProps = {
   onSampleGeneral: () => void
   onSampleHandoff: () => void
   onSecure: () => void
+}
+
+type SecureVerificationState = {
+  channel: VerificationChannel
+  contact: string
+  code: string
+  status: string | null
+  isCreatingHandoff: boolean
+  isRequestingChallenge: boolean
+  isVerifying: boolean
 }
 
 const asset = (name: string) => `/asc-assets/${name}`
@@ -83,6 +140,65 @@ async function sendPublicChatMessage(token: string, content: string): Promise<Pu
 
   const payload = await response.json()
   return payload.public_chat_session
+}
+
+async function createSecureHandoff(input: {
+  publicChatSessionToken?: string
+  originalQuestion?: string
+  reasonForHandoff?: string
+  intent?: string
+  topic?: string
+  detectedEmployerOrPlan?: string
+} = {}): Promise<HandoffToken> {
+  const response = await fetch(`${apiBaseUrl}/api/v1/handoffs`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      handoff: {
+        public_chat_session_token: input.publicChatSessionToken,
+        original_question: input.originalQuestion,
+        reason_for_handoff: input.reasonForHandoff,
+        intent: input.intent,
+        topic: input.topic,
+        detected_employer_or_plan: input.detectedEmployerOrPlan,
+      },
+    }),
+  })
+  if (!response.ok) throw new Error('Unable to create secure handoff')
+
+  const payload = await response.json()
+  return payload.handoff
+}
+
+async function createVerificationChallenge(
+  handoffToken: string,
+  channel: VerificationChannel,
+  contact: string,
+): Promise<VerificationChallenge> {
+  const response = await fetch(`${apiBaseUrl}/api/v1/handoffs/${handoffToken}/verification_challenges`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ verification_challenge: { channel, contact } }),
+  })
+  if (!response.ok) throw new Error('Unable to send secure code')
+
+  const payload = await response.json()
+  return payload.challenge
+}
+
+async function verifySecureChallenge(
+  handoffToken: string,
+  challengeToken: string,
+  code: string,
+): Promise<{ secure_access_session: SecureAccessSession; secure_chat_session: SecureChatSession }> {
+  const response = await fetch(`${apiBaseUrl}/api/v1/handoffs/${handoffToken}/verification_challenges/${challengeToken}/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ verification_challenge: { code } }),
+  })
+  if (!response.ok) throw new Error('Unable to verify secure code')
+
+  return response.json()
 }
 
 const stats = [
@@ -267,11 +383,24 @@ const baseAuditEvents = [
   'Verified facts entered by ASC staff',
 ]
 
-function App() {
+function App({ isClerkEnabled = false }: { isClerkEnabled?: boolean }) {
   const [view, setView] = useState<View>('home')
   const [isVerified, setIsVerified] = useState(false)
   const [staffState, setStaffState] = useState<StaffState>('needs_lookup')
   const [draftText, setDraftText] = useState(defaultDraftText)
+  const [handoff, setHandoff] = useState<HandoffToken | null>(null)
+  const [verificationChallenge, setVerificationChallenge] = useState<VerificationChallenge | null>(null)
+  const [secureAccessSession, setSecureAccessSession] = useState<SecureAccessSession | null>(null)
+  const [secureChatSession, setSecureChatSession] = useState<SecureChatSession | null>(null)
+  const [secureVerification, setSecureVerification] = useState<SecureVerificationState>({
+    channel: 'email',
+    contact: 'malia.demo@example.test',
+    code: '',
+    status: null,
+    isCreatingHandoff: false,
+    isRequestingChallenge: false,
+    isVerifying: false,
+  })
 
   const statusLabel = useMemo(() => {
     switch (staffState) {
@@ -291,15 +420,54 @@ function App() {
 
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' })
 
-  const goSecure = (options?: { freshHandoff?: boolean; verifiedSession?: boolean }) => {
+  const startSecureHandoff = async (options?: {
+    freshHandoff?: boolean
+    verifiedSession?: boolean
+    publicChatSessionToken?: string
+    originalQuestion?: string
+    reasonForHandoff?: string
+    intent?: string
+    topic?: string
+    detectedEmployerOrPlan?: string
+  }) => {
     if (options?.freshHandoff) {
       setIsVerified(false)
       setStaffState('needs_lookup')
       setDraftText(defaultDraftText)
+      setVerificationChallenge(null)
+      setSecureAccessSession(null)
+      setSecureChatSession(null)
+      setSecureVerification((current) => ({ ...current, code: '', status: null, isCreatingHandoff: true }))
     }
-    if (options?.verifiedSession) setIsVerified(true)
+
     setView('secure')
     scrollToTop()
+
+    if (options?.verifiedSession) {
+      setIsVerified(true)
+      return
+    }
+
+    try {
+      const createdHandoff = await createSecureHandoff({
+        publicChatSessionToken: options?.publicChatSessionToken,
+        originalQuestion: options?.originalQuestion ?? 'I work for Bank of Mila. How much can I borrow from my 401(k)?',
+        reasonForHandoff: options?.reasonForHandoff ?? 'Account-specific loan eligibility requires secure verification and ASC staff review.',
+        intent: options?.intent ?? 'participant_specific',
+        topic: options?.topic ?? '401(k) loan eligibility',
+        detectedEmployerOrPlan: options?.detectedEmployerOrPlan ?? 'Bank of Mila',
+      })
+      setHandoff(createdHandoff)
+      setSecureVerification((current) => ({ ...current, status: 'Secure handoff created. Choose email or text to receive a code.' }))
+    } catch {
+      setSecureVerification((current) => ({ ...current, status: 'Could not create a Rails-backed handoff. Start the Rails API to test the live secure flow.' }))
+    } finally {
+      setSecureVerification((current) => ({ ...current, isCreatingHandoff: false }))
+    }
+  }
+
+  const goSecure = (options?: { freshHandoff?: boolean; verifiedSession?: boolean }) => {
+    void startSecureHandoff(options)
   }
 
   const goStaff = () => {
@@ -329,7 +497,67 @@ function App() {
     setIsVerified(false)
     setStaffState('needs_lookup')
     setDraftText(defaultDraftText)
+    setHandoff(null)
+    setVerificationChallenge(null)
+    setSecureAccessSession(null)
+    setSecureChatSession(null)
+    setSecureVerification({
+      channel: 'email',
+      contact: 'malia.demo@example.test',
+      code: '',
+      status: null,
+      isCreatingHandoff: false,
+      isRequestingChallenge: false,
+      isVerifying: false,
+    })
     scrollToTop()
+  }
+
+  const updateSecureVerification = (updates: Partial<SecureVerificationState>) => {
+    setSecureVerification((current) => ({ ...current, ...updates }))
+  }
+
+  const requestSecureCode = async () => {
+    if (!handoff) {
+      updateSecureVerification({ status: 'Create the secure handoff first.', isRequestingChallenge: false })
+      return
+    }
+
+    updateSecureVerification({ isRequestingChallenge: true, status: null })
+    try {
+      const challenge = await createVerificationChallenge(handoff.token, secureVerification.channel, secureVerification.contact)
+      setVerificationChallenge(challenge)
+      updateSecureVerification({
+        code: challenge.demo_code ?? '',
+        status: challenge.demo_code
+          ? `Demo code generated for ${challenge.contact_masked}. Live sends are disabled by default.`
+          : `If that information matches ASC records, we’ll send a secure code to ${challenge.contact_masked}.`,
+      })
+    } catch {
+      updateSecureVerification({ status: 'Could not request a secure code. Check that Rails is running and try again.' })
+    } finally {
+      updateSecureVerification({ isRequestingChallenge: false })
+    }
+  }
+
+  const verifySecureCode = async () => {
+    if (!handoff || !verificationChallenge) {
+      updateSecureVerification({ status: 'Request a secure code first.' })
+      return
+    }
+
+    updateSecureVerification({ isVerifying: true, status: null })
+    try {
+      const result = await verifySecureChallenge(handoff.token, verificationChallenge.token, secureVerification.code)
+      setSecureAccessSession(result.secure_access_session)
+      setSecureChatSession(result.secure_chat_session)
+      setIsVerified(true)
+      updateSecureVerification({ status: 'Secure support session created.' })
+    } catch {
+      updateSecureVerification({ status: 'That code is invalid or expired. Please request a new secure code.' })
+    } finally {
+      updateSecureVerification({ isVerifying: false })
+    }
   }
 
   return (
@@ -343,29 +571,89 @@ function App() {
         resetDemo={resetDemo}
       />
 
-      {view === 'home' && <PublicSiteView onSecure={() => goSecure({ freshHandoff: true })} />}
+      {view === 'home' && <PublicSiteView onSecure={(source) => { void startSecureHandoff({ freshHandoff: true, ...source }) }} />}
       {view === 'secure' && (
         <SecureSupportView
           isVerified={isVerified}
-          setIsVerified={setIsVerified}
+          handoff={handoff}
+          verificationChallenge={verificationChallenge}
+          secureVerification={secureVerification}
+          secureAccessSession={secureAccessSession}
+          secureChatSession={secureChatSession}
           statusLabel={statusLabel}
           staffState={staffState}
           draftText={draftText}
+          onUpdateVerification={updateSecureVerification}
+          onRequestCode={() => { void requestSecureCode() }}
+          onVerifyCode={() => { void verifySecureCode() }}
           onStaff={goStaff}
         />
       )}
       {view === 'staff' && (
-        <StaffDashboardView
-          staffState={staffState}
-          setStaffState={setStaffState}
-          draftText={draftText}
-          setDraftText={setDraftText}
-          onSecure={() => goSecure({ verifiedSession: true })}
-          onAdmin={goAdmin}
-        />
+        <StaffAccessGate isClerkEnabled={isClerkEnabled}>
+          <StaffDashboardView
+            staffState={staffState}
+            setStaffState={setStaffState}
+            draftText={draftText}
+            setDraftText={setDraftText}
+            secureChatSession={secureChatSession}
+            onSecure={() => goSecure({ verifiedSession: true })}
+            onAdmin={goAdmin}
+          />
+        </StaffAccessGate>
       )}
-      {view === 'admin' && <AdminDashboardView staffState={staffState} onStaff={goStaff} />}
+      {view === 'admin' && (
+        <StaffAccessGate isClerkEnabled={isClerkEnabled}>
+          <AdminDashboardView staffState={staffState} onStaff={goStaff} />
+        </StaffAccessGate>
+      )}
     </main>
+  )
+}
+
+function StaffAccessGate({ isClerkEnabled, children }: { isClerkEnabled: boolean; children: ReactNode }) {
+  if (!isClerkEnabled) return <>{children}</>
+
+  return <ClerkStaffAccessGate>{children}</ClerkStaffAccessGate>
+}
+
+function ClerkStaffAccessGate({ children }: { children: ReactNode }) {
+  const { isLoaded, isSignedIn } = useAuth()
+
+  if (!isLoaded) {
+    return (
+      <section className="app-view secure-app-view">
+        <div className="auth-card centered-card">
+          <span className="badge">Staff access</span>
+          <h2>Checking staff sign-in</h2>
+          <p>Clerk is loading the secure staff session.</p>
+        </div>
+      </section>
+    )
+  }
+
+  if (!isSignedIn) {
+    return (
+      <section className="app-view secure-app-view">
+        <div className="auth-card centered-card">
+          <span className="badge">Staff access</span>
+          <h2>ASC staff sign-in required</h2>
+          <p>Staff and admin dashboards are protected with Clerk. Participants use the passwordless secure support flow instead.</p>
+          <SignInButton mode="modal">
+            <button className="primary-button">Sign in as staff</button>
+          </SignInButton>
+        </div>
+      </section>
+    )
+  }
+
+  return (
+    <>
+      <div className="staff-user-button" aria-label="Signed-in staff account">
+        <UserButton afterSignOutUrl="/" />
+      </div>
+      {children}
+    </>
   )
 }
 
@@ -430,7 +718,11 @@ function SiteHeader({
   )
 }
 
-function PublicSiteView({ onSecure }: { onSecure: () => void }) {
+function PublicSiteView({
+  onSecure,
+}: {
+  onSecure: (source?: { publicChatSessionToken?: string; originalQuestion?: string; reasonForHandoff?: string; detectedEmployerOrPlan?: string }) => void
+}) {
   const [showGeneralInfo, setShowGeneralInfo] = useState(false)
   const [selectedTask, setSelectedTask] = useState<ParticipantTask | null>(null)
   const [selectedFormCategory, setSelectedFormCategory] = useState<FormCategory>(formCategories[0])
@@ -527,7 +819,11 @@ function PublicSiteView({ onSecure }: { onSecure: () => void }) {
 
   const handleTaskClick = (task: ParticipantTask) => {
     if (task.startsSecureHandoff) {
-      onSecure()
+      onSecure({
+        originalQuestion: 'I work for Bank of Mila. How much can I borrow from my 401(k)?',
+        reasonForHandoff: 'Participant selected a task that requires account-specific staff review.',
+        detectedEmployerOrPlan: 'Bank of Mila',
+      })
       return
     }
     setSelectedTask(task)
@@ -544,7 +840,7 @@ function PublicSiteView({ onSecure }: { onSecure: () => void }) {
           </p>
           <div className="hero-actions" aria-label="Primary actions">
             <a className="primary-button" href="#participants">Explore participant support</a>
-            <button className="secondary-button" onClick={onSecure}>Continue securely</button>
+            <button className="secondary-button" onClick={() => onSecure()}>Continue securely</button>
           </div>
         </div>
 
@@ -864,7 +1160,12 @@ function PublicSiteView({ onSecure }: { onSecure: () => void }) {
         onSubmit={handlePublicChatSubmit}
         onSampleGeneral={() => { setShowGeneralInfo(true); void submitPublicChatMessage('What types of 401(k) plans are there?') }}
         onSampleHandoff={() => { setShowGeneralInfo(true); void submitPublicChatMessage('I work for Bank of Mila. How much can I borrow from my 401(k)?') }}
-        onSecure={onSecure}
+        onSecure={() => onSecure({
+          publicChatSessionToken: chatSession?.token,
+          originalQuestion: publicChatMessages.filter((message) => message.role === 'user').at(-1)?.content,
+          reasonForHandoff: chatSession?.handoff_reason ?? undefined,
+          detectedEmployerOrPlan: 'Bank of Mila',
+        })}
       />
     </>
   )
@@ -993,52 +1294,132 @@ function PublicAriaWidget({
 
 function SecureSupportView({
   isVerified,
-  setIsVerified,
+  handoff,
+  verificationChallenge,
+  secureVerification,
+  secureAccessSession,
+  secureChatSession,
   statusLabel,
   staffState,
   draftText,
+  onUpdateVerification,
+  onRequestCode,
+  onVerifyCode,
   onStaff,
 }: {
   isVerified: boolean
-  setIsVerified: (value: boolean) => void
+  handoff: HandoffToken | null
+  verificationChallenge: VerificationChallenge | null
+  secureVerification: SecureVerificationState
+  secureAccessSession: SecureAccessSession | null
+  secureChatSession: SecureChatSession | null
   statusLabel: string
   staffState: StaffState
   draftText: string
+  onUpdateVerification: (updates: Partial<SecureVerificationState>) => void
+  onRequestCode: () => void
+  onVerifyCode: () => void
   onStaff: () => void
 }) {
+  const participantName = secureChatSession?.participant?.display_name ?? sampleSession.participant
+  const employerName = secureChatSession?.employer_name ?? sampleSession.employer
+  const planName = secureChatSession?.plan_name ?? sampleSession.plan
+  const secureMessages = secureChatSession?.messages?.length ? secureChatSession.messages : [
+    { id: -10, role: 'assistant' as const, content: 'You’re now in secure ARIA support. ASC staff can review this saved session before any account-specific answer is sent.' },
+    { id: -11, role: 'user' as const, content: handoff?.original_question ?? 'I work for Bank of Mila. How much can I borrow from my 401(k)?' },
+    { id: -12, role: 'assistant' as const, content: 'I found the support topic, but ASC staff needs to verify account details manually before responding with participant-specific information.' },
+    { id: -13, role: 'system' as const, content: 'Staff verification requested. No real Relias data is stored in this prototype.' },
+  ]
+
   return (
     <section className="app-view secure-app-view">
       <div className="view-heading">
         <p className="eyebrow">Secure ARIA support</p>
         <h1><span>Private support,</span><span>with staff oversight.</span></h1>
         <p>
-          Secure ARIA support keeps the conversation private, saves the session for ASC staff, and protects account-specific questions with human oversight.
+          Participants continue with a secure email or text code. Staff use Clerk-protected dashboards to review and approve account-specific responses.
         </p>
       </div>
 
       {!isVerified ? (
         <div className="auth-layout">
           <div className="auth-card">
-            <span className="badge">Secure verification</span>
-            <h2>Continue to secure support</h2>
+            <span className="badge">Passwordless secure verification</span>
+            <h2>Send a secure code</h2>
             <p>
-              ARIA can explain general rules publicly, but loan eligibility and borrowing amounts require a private support session.
+              To protect retirement information, ASC verifies the email or mobile number on file before opening a private support session.
             </p>
             <div className="context-box">
               <span>Handoff reason</span>
-              <strong>{sampleSession.handoffReason}</strong>
-              <small>Topic: {sampleSession.topic} • Employer: {sampleSession.employer}</small>
+              <strong>{handoff?.reason_for_handoff ?? sampleSession.handoffReason}</strong>
+              <small>Topic: {handoff?.topic ?? sampleSession.topic} • Employer: {handoff?.detected_employer_or_plan ?? sampleSession.employer}</small>
             </div>
+
+            <form className="verification-form" onSubmit={(event) => { event.preventDefault(); onRequestCode() }}>
+              <label htmlFor="verification-channel">Send code by</label>
+              <select
+                id="verification-channel"
+                value={secureVerification.channel}
+                onChange={(event) => onUpdateVerification({
+                  channel: event.target.value as VerificationChannel,
+                  contact: event.target.value === 'email' ? 'malia.demo@example.test' : '671-555-0100',
+                  code: '',
+                })}
+                disabled={secureVerification.isCreatingHandoff || secureVerification.isRequestingChallenge || secureVerification.isVerifying}
+              >
+                <option value="email">Secure email</option>
+                <option value="sms">Text message</option>
+              </select>
+
+              <label htmlFor="verification-contact">Email or mobile number on file with ASC</label>
+              <input
+                id="verification-contact"
+                value={secureVerification.contact}
+                onChange={(event) => onUpdateVerification({ contact: event.target.value })}
+                placeholder={secureVerification.channel === 'email' ? 'malia.demo@example.test' : '671-555-0100'}
+                disabled={secureVerification.isCreatingHandoff || secureVerification.isRequestingChallenge || secureVerification.isVerifying}
+              />
+              <button className="primary-button" type="submit" disabled={!handoff || secureVerification.isCreatingHandoff || secureVerification.isRequestingChallenge}>
+                {secureVerification.isRequestingChallenge ? 'Sending code...' : 'Send secure code'}
+              </button>
+            </form>
+
+            {verificationChallenge && (
+              <form className="verification-form code-form" onSubmit={(event) => { event.preventDefault(); onVerifyCode() }}>
+                <label htmlFor="verification-code">Enter secure code</label>
+                <input
+                  id="verification-code"
+                  value={secureVerification.code}
+                  onChange={(event) => onUpdateVerification({ code: event.target.value })}
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="6-digit code"
+                  disabled={secureVerification.isVerifying}
+                />
+                <button className="secure-button" type="submit" disabled={secureVerification.code.trim().length < 6 || secureVerification.isVerifying}>
+                  {secureVerification.isVerifying ? 'Verifying...' : 'Verify and continue'}
+                </button>
+                {verificationChallenge.demo_code && (
+                  <small className="demo-code-note">Prototype demo code: <strong>{verificationChallenge.demo_code}</strong></small>
+                )}
+              </form>
+            )}
+
+            {secureVerification.status && (
+              <div className="inline-info-card" role="status">
+                <strong>{secureVerification.status}</strong>
+                {secureAccessSession && <span>Secure access token created for this browser session.</span>}
+              </div>
+            )}
             <ComplianceNotice compact />
-            <button className="primary-button" onClick={() => setIsVerified(true)}>Verify and continue</button>
           </div>
           <div className="checklist-card">
             <h3>Secure support includes</h3>
             <ul>
-              <li>Identity/verification boundary</li>
-              <li>Saved transcript and session status</li>
-              <li>Staff review queue visibility</li>
-              <li>Audit trail for staff actions</li>
+              <li>Passwordless email/SMS verification</li>
+              <li>Generic response to protect participant privacy</li>
+              <li>Saved transcript and support status</li>
+              <li>Staff queue and audit trail</li>
             </ul>
           </div>
         </div>
@@ -1047,15 +1428,16 @@ function SecureSupportView({
           <div className="secure-chat-card">
             <div className="panel-header stacked">
               <span>Verified participant</span>
-              <strong>{sampleSession.participant}</strong>
-              <small>{sampleSession.employer} • {sampleSession.plan}</small>
+              <strong>{participantName}</strong>
+              <small>{employerName} • {planName}</small>
             </div>
             <div className={`session-status ${staffState}`}>{statusLabel}</div>
             <div className="chat-window contained tall">
-              <p className="message aria">You’re now in secure ARIA support. I’ll keep this session private and save the transcript for ASC review.</p>
-              <p className="message user">I work for Bank of Mila. How much can I borrow from my 401(k)?</p>
-              <p className="message aria">I found the plan-rule record for your employer, but ASC staff needs to verify your balance and active loan count before an account-specific response can be approved.</p>
-              <p className="message system-note">System: Staff verification requested.</p>
+              {secureMessages.map((message) => {
+                const messageClass = message.role === 'assistant' ? 'aria' : message.role === 'system' ? 'system-note' : message.role
+
+                return <p className={`message ${messageClass}`} key={message.id}>{message.content}</p>
+              })}
               {staffState === 'human_takeover' && <p className="message staff">An ASC associate has joined this secure support session and can continue the conversation directly.</p>}
               {staffState === 'approved' && <p className="message aria">{draftText}</p>}
             </div>
@@ -1064,8 +1446,8 @@ function SecureSupportView({
           <aside className="support-side-card">
             <h3>What moved from public chat</h3>
             <div className="review-list compact">
-              <div><span>Intent</span><strong>{sampleSession.intent}</strong></div>
-              <div><span>Plan</span><strong>{sampleSession.employer}</strong></div>
+              <div><span>Intent</span><strong>{handoff?.intent ?? sampleSession.intent}</strong></div>
+              <div><span>Plan</span><strong>{employerName}</strong></div>
               <div><span>Next action</span><strong>Staff verifies account details</strong></div>
               <div><span>Status</span><strong>{statusLabel}</strong></div>
             </div>
@@ -1083,6 +1465,7 @@ function StaffDashboardView({
   setStaffState,
   draftText,
   setDraftText,
+  secureChatSession,
   onSecure,
   onAdmin,
 }: {
@@ -1090,6 +1473,7 @@ function StaffDashboardView({
   setStaffState: (state: StaffState) => void
   draftText: string
   setDraftText: (text: string) => void
+  secureChatSession: SecureChatSession | null
   onSecure: () => void
   onAdmin: () => void
 }) {
@@ -1103,6 +1487,10 @@ function StaffDashboardView({
     setDraftText(defaultDraftText)
     setStaffState('draft_ready')
   }
+  const participantName = secureChatSession?.participant?.display_name ?? sampleSession.participant
+  const employerName = secureChatSession?.employer_name ?? sampleSession.employer
+  const topic = secureChatSession?.topic ?? sampleSession.topic
+  const queueStatus = secureChatSession?.support_request?.status === 'needs_relias_lookup' ? 'Needs Relias Lookup' : getStaffStatusText(staffState)
 
   return (
     <section className="app-view staff-app-view">
@@ -1120,7 +1508,7 @@ function StaffDashboardView({
             <span>Review queue</span>
             <strong>4 active sessions</strong>
           </div>
-          <QueueItem active name={sampleSession.participant} status="Needs Relias Lookup" topic="401(k) loan" />
+          <QueueItem active name={participantName} status={queueStatus} topic={topic} />
           <QueueItem name="Jon Reyes" status="AI Draft Ready" topic="Beneficiary update" />
           <QueueItem name="Ana Cruz" status="Human Takeover" topic="Hardship question" />
           <QueueItem name="Kai Flores" status="Resolved" topic="Find a form" />
@@ -1130,8 +1518,8 @@ function StaffDashboardView({
           <div className="detail-topline">
             <div>
               <p className="eyebrow">Current session</p>
-              <h2>{sampleSession.participant}</h2>
-              <p>{sampleSession.employer} • {sampleSession.topic}</p>
+              <h2>{participantName}</h2>
+              <p>{employerName} • {topic}</p>
             </div>
             <span className={`status-pill ${staffState}`}>{getStaffStatusText(staffState)}</span>
           </div>
