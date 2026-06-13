@@ -1,5 +1,5 @@
 import type { FormEvent, MouseEvent, RefObject, ReactNode } from 'react'
-import { SignInButton, UserButton, useAuth } from '@clerk/clerk-react'
+import { SignInButton, SignUpButton, UserButton, useAuth } from '@clerk/clerk-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import { ascImageAssets, ascPages } from './ascSiteData'
@@ -87,6 +87,15 @@ type SecureChatSession = {
   messages: PublicChatMessage[]
 }
 
+type StaffAuthUser = {
+  id: number
+  name: string
+  email: string
+  role?: {
+    name: string
+  }
+}
+
 type PublicAriaWidgetProps = {
   isOpen: boolean
   isExpanded: boolean
@@ -95,6 +104,7 @@ type PublicAriaWidgetProps = {
   isSending: boolean
   chatStatus: string | null
   chatScrollRef: RefObject<HTMLDivElement | null>
+  chatInputRef: RefObject<HTMLInputElement | null>
   onOpen: () => void
   onClose: () => void
   onToggleExpanded: () => void
@@ -117,6 +127,9 @@ type SecureVerificationState = {
 
 const asset = (name: string) => `/asc-assets/${name}`
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:3000').replace(/\/$/, '')
+const clerkJwtTemplate = import.meta.env.VITE_CLERK_JWT_TEMPLATE || undefined
+const demoParticipantEmail = import.meta.env.VITE_DEMO_PARTICIPANT_EMAIL || 'malia.demo@example.test'
+const demoParticipantPhone = import.meta.env.VITE_DEMO_PARTICIPANT_PHONE || '671-555-0100'
 
 async function createPublicChatSession(): Promise<PublicChatSession> {
   const response = await fetch(`${apiBaseUrl}/api/v1/chat/public_sessions`, {
@@ -394,7 +407,7 @@ function App({ isClerkEnabled = false }: { isClerkEnabled?: boolean }) {
   const [secureChatSession, setSecureChatSession] = useState<SecureChatSession | null>(null)
   const [secureVerification, setSecureVerification] = useState<SecureVerificationState>({
     channel: 'email',
-    contact: 'malia.demo@example.test',
+    contact: demoParticipantEmail,
     code: '',
     status: null,
     isCreatingHandoff: false,
@@ -503,7 +516,7 @@ function App({ isClerkEnabled = false }: { isClerkEnabled?: boolean }) {
     setSecureChatSession(null)
     setSecureVerification({
       channel: 'email',
-      contact: 'malia.demo@example.test',
+      contact: demoParticipantEmail,
       code: '',
       status: null,
       isCreatingHandoff: false,
@@ -618,15 +631,53 @@ function StaffAccessGate({ isClerkEnabled, children }: { isClerkEnabled: boolean
 }
 
 function ClerkStaffAccessGate({ children }: { children: ReactNode }) {
-  const { isLoaded, isSignedIn } = useAuth()
+  const { getToken, isLoaded, isSignedIn } = useAuth()
+  const [staffUser, setStaffUser] = useState<StaffAuthUser | null>(null)
+  const [authError, setAuthError] = useState<string | null>(null)
+  const [isCheckingRailsAuth, setIsCheckingRailsAuth] = useState(false)
 
-  if (!isLoaded) {
+  useEffect(() => {
+    let isCancelled = false
+
+    const verifyRailsStaffAccess = async () => {
+      setStaffUser(null)
+      setAuthError(null)
+
+      if (!isLoaded || !isSignedIn) return
+
+      setIsCheckingRailsAuth(true)
+      try {
+        const token = await getToken(clerkJwtTemplate ? { template: clerkJwtTemplate } : undefined)
+        if (!token) throw new Error('Clerk did not return a staff token.')
+
+        const response = await fetch(`${apiBaseUrl}/api/v1/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const payload = await response.json().catch(() => ({}))
+        if (!response.ok) throw new Error(payload.error || 'Rails staff authorization failed.')
+
+        if (!isCancelled) setStaffUser(payload.user)
+      } catch (error) {
+        if (!isCancelled) setAuthError(error instanceof Error ? error.message : 'Staff authentication failed.')
+      } finally {
+        if (!isCancelled) setIsCheckingRailsAuth(false)
+      }
+    }
+
+    void verifyRailsStaffAccess()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [getToken, isLoaded, isSignedIn])
+
+  if (!isLoaded || isCheckingRailsAuth) {
     return (
       <section className="app-view secure-app-view">
         <div className="auth-card centered-card">
           <span className="badge">Staff access</span>
           <h2>Checking staff sign-in</h2>
-          <p>Clerk is loading the secure staff session.</p>
+          <p>Clerk is loading the secure staff session and Rails is verifying the staff role.</p>
         </div>
       </section>
     )
@@ -639,9 +690,31 @@ function ClerkStaffAccessGate({ children }: { children: ReactNode }) {
           <span className="badge">Staff access</span>
           <h2>ASC staff sign-in required</h2>
           <p>Staff and admin dashboards are protected with Clerk. Participants use the passwordless secure support flow instead.</p>
-          <SignInButton mode="modal">
-            <button className="primary-button">Sign in as staff</button>
-          </SignInButton>
+          <div className="button-row centered-actions">
+            <SignInButton mode="modal">
+              <button className="primary-button">Sign in as staff</button>
+            </SignInButton>
+            <SignUpButton mode="modal">
+              <button className="ghost-button">Create staff sign-in</button>
+            </SignUpButton>
+          </div>
+          <p className="fine-print">Only emails already invited in Rails as ASC staff can open the dashboard.</p>
+        </div>
+      </section>
+    )
+  }
+
+  if (authError || !staffUser) {
+    return (
+      <section className="app-view secure-app-view">
+        <div className="auth-card centered-card">
+          <span className="badge">Staff access</span>
+          <h2>Signed in, but not authorized</h2>
+          <p>{authError ?? 'Rails did not find an active ASC staff invitation for this Clerk account.'}</p>
+          <p className="fine-print">Sign in with the configured ASC staff test email, then try Staff view again.</p>
+          <div className="staff-user-button inline-user-button" aria-label="Signed-in Clerk account">
+            <UserButton afterSignOutUrl="/" />
+          </div>
         </div>
       </section>
     )
@@ -650,6 +723,7 @@ function ClerkStaffAccessGate({ children }: { children: ReactNode }) {
   return (
     <>
       <div className="staff-user-button" aria-label="Signed-in staff account">
+        <span>{staffUser.name}</span>
         <UserButton afterSignOutUrl="/" />
       </div>
       {children}
@@ -735,6 +809,7 @@ function PublicSiteView({
   const [isChatExpanded, setIsChatExpanded] = useState(false)
   const [pendingUserMessage, setPendingUserMessage] = useState<PublicChatMessage | null>(null)
   const chatScrollRef = useRef<HTMLDivElement | null>(null)
+  const chatInputRef = useRef<HTMLInputElement | null>(null)
 
   const visibleContentPages = useMemo(() => {
     if (contentFilter === 'All') return ascPages
@@ -809,6 +884,7 @@ function PublicSiteView({
       setChatStatus('ARIA could not connect. Please make sure the Rails API is running and try again.')
     } finally {
       setIsChatSending(false)
+      window.requestAnimationFrame(() => chatInputRef.current?.focus())
     }
   }
 
@@ -1153,6 +1229,7 @@ function PublicSiteView({
         isSending={isChatSending}
         chatStatus={chatStatus}
         chatScrollRef={chatScrollRef}
+        chatInputRef={chatInputRef}
         onOpen={() => setIsChatOpen(true)}
         onClose={() => setIsChatOpen(false)}
         onToggleExpanded={() => setIsChatExpanded((current) => !current)}
@@ -1179,6 +1256,7 @@ function PublicAriaWidget({
   isSending,
   chatStatus,
   chatScrollRef,
+  chatInputRef,
   onOpen,
   onClose,
   onToggleExpanded,
@@ -1264,6 +1342,7 @@ function PublicAriaWidget({
           <label className="sr-only" htmlFor="public-aria-widget-question">Ask ARIA a public question</label>
           <input
             id="public-aria-widget-question"
+            ref={chatInputRef}
             value={chatInput}
             onChange={(event) => onInputChange(event.target.value)}
             placeholder="Ask about 401(k) plans or forms"
@@ -1362,7 +1441,7 @@ function SecureSupportView({
                 value={secureVerification.channel}
                 onChange={(event) => onUpdateVerification({
                   channel: event.target.value as VerificationChannel,
-                  contact: event.target.value === 'email' ? 'malia.demo@example.test' : '671-555-0100',
+                  contact: event.target.value === 'email' ? demoParticipantEmail : demoParticipantPhone,
                   code: '',
                 })}
                 disabled={secureVerification.isCreatingHandoff || secureVerification.isRequestingChallenge || secureVerification.isVerifying}
@@ -1376,7 +1455,7 @@ function SecureSupportView({
                 id="verification-contact"
                 value={secureVerification.contact}
                 onChange={(event) => onUpdateVerification({ contact: event.target.value })}
-                placeholder={secureVerification.channel === 'email' ? 'malia.demo@example.test' : '671-555-0100'}
+                placeholder={secureVerification.channel === 'email' ? demoParticipantEmail : demoParticipantPhone}
                 disabled={secureVerification.isCreatingHandoff || secureVerification.isRequestingChallenge || secureVerification.isVerifying}
               />
               <button className="primary-button" type="submit" disabled={!handoff || secureVerification.isCreatingHandoff || secureVerification.isRequestingChallenge}>

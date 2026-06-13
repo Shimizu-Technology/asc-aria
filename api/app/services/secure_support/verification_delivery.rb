@@ -3,19 +3,20 @@ module SecureSupport
     class << self
       def deliver!(challenge:, code:, contact:)
         provider = provider_for(challenge.channel)
+        live_send_allowed = live_send_enabled?(challenge.channel, contact: contact)
         delivery = challenge.outbound_deliveries.create!(
           channel: challenge.channel,
           provider: provider,
           recipient_digest: challenge.contact_digest,
           recipient_masked: challenge.contact_masked,
           status: "queued",
-          metadata: { fake_data_only: true, live_send_enabled: live_send_enabled?(challenge.channel) }
+          metadata: { fake_data_only: true, live_send_enabled: live_send_allowed }
         )
 
-        if !live_send_enabled?(challenge.channel)
+        unless live_send_allowed
           delivery.mark_sent!(
             provider_message_id: "demo_#{SecureRandom.hex(8)}",
-            metadata: { delivery_skipped: true, reason: "live_send_disabled" }
+            metadata: { delivery_skipped: true, reason: live_send_skip_reason(challenge.channel, contact: contact) }
           )
           challenge.mark_sent!
           return delivery
@@ -41,9 +42,9 @@ module SecureSupport
         delivery
       end
 
-      def live_send_enabled?(channel)
+      def live_send_enabled?(channel, contact: nil)
         env_key = channel == "email" ? "LIVE_VERIFICATION_EMAILS_ENABLED" : "LIVE_VERIFICATION_SMS_ENABLED"
-        ActiveModel::Type::Boolean.new.cast(ENV.fetch(env_key, "false"))
+        ActiveModel::Type::Boolean.new.cast(ENV.fetch(env_key, "false")) && live_recipient_allowed?(channel, contact)
       end
 
       def demo_codes_enabled?
@@ -57,6 +58,38 @@ module SecureSupport
         return "clicksend" if channel == "sms"
 
         "demo"
+      end
+
+      def live_send_skip_reason(channel, contact:)
+        return "live_send_disabled" unless live_send_flag_enabled?(channel)
+        return "recipient_not_allowlisted" unless live_recipient_allowed?(channel, contact)
+
+        "live_send_disabled"
+      end
+
+      def live_send_flag_enabled?(channel)
+        env_key = channel == "email" ? "LIVE_VERIFICATION_EMAILS_ENABLED" : "LIVE_VERIFICATION_SMS_ENABLED"
+        ActiveModel::Type::Boolean.new.cast(ENV.fetch(env_key, "false"))
+      end
+
+      def live_recipient_allowed?(channel, contact)
+        return false if contact.blank?
+        return true unless ActiveModel::Type::Boolean.new.cast(ENV.fetch("LIVE_VERIFICATION_ALLOWLIST_REQUIRED", "true"))
+
+        normalized_contact = channel == "email" ? Contact.normalize_email(contact) : Contact.normalize_phone(contact)
+        allowed_live_contacts(channel).include?(normalized_contact)
+      end
+
+      def allowed_live_contacts(channel)
+        env_keys = if channel == "email"
+          %w[ASC_ARIA_TEST_PARTICIPANT_EMAIL LIVE_VERIFICATION_ALLOWED_EMAILS]
+        else
+          %w[ASC_ARIA_TEST_PARTICIPANT_PHONE LIVE_VERIFICATION_ALLOWED_PHONES]
+        end
+
+        env_keys.flat_map { |key| ENV.fetch(key, "").split(",") }
+          .map { |value| channel == "email" ? Contact.normalize_email(value) : Contact.normalize_phone(value) }
+          .reject(&:blank?)
       end
 
       def send_email(contact:, code:)
