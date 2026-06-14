@@ -101,6 +101,32 @@ class Api::V1::VerificationChallengesControllerTest < ActionDispatch::Integratio
     assert_equal "sent", body.fetch("challenge").fetch("status")
   end
 
+  test "does not create secure session after handoff expires" do
+    post api_v1_handoff_verification_challenges_url(@handoff.token), params: {
+      verification_challenge: {
+        channel: "email",
+        contact: "malia.demo@example.test"
+      }
+    }
+    challenge_payload = JSON.parse(response.body).fetch("challenge")
+    @handoff.update!(expires_at: 1.minute.ago)
+
+    assert_no_difference -> { SecureAccessSession.count } do
+      assert_no_difference -> { SecureChatSession.count } do
+        assert_no_difference -> { SupportRequest.count } do
+          post verify_api_v1_handoff_verification_challenge_url(@handoff.token, challenge_payload.fetch("token")), params: {
+            verification_challenge: {
+              code: challenge_payload.fetch("demo_code")
+            }
+          }
+        end
+      end
+    end
+
+    assert_response :unprocessable_entity
+    assert_equal "sent", VerificationChallenge.find_by!(token: challenge_payload.fetch("token")).status
+  end
+
   test "verifies challenge and creates secure session support request" do
     post api_v1_handoff_verification_challenges_url(@handoff.token), params: {
       verification_challenge: {

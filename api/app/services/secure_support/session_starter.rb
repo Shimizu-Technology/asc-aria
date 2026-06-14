@@ -11,11 +11,12 @@ module SecureSupport
       result = nil
 
       HandoffToken.transaction do
+        handoff = HandoffToken.lock.find(challenge.handoff_token_id)
+        raise ArgumentError, "Verification code is invalid or expired" unless handoff_available_for_verification?(handoff)
         raise ArgumentError, "Verification code is invalid or expired" unless challenge.participant_directory_entry
         raise ArgumentError, "Verification code is invalid or expired" unless challenge.verify!(code)
 
         participant = challenge.participant_directory_entry
-        handoff = challenge.handoff_token
         handoff.mark_verified!(participant)
 
         access_session = SecureAccessSession.create!(
@@ -69,6 +70,10 @@ module SecureSupport
     private
 
     attr_reader :challenge, :code
+
+    def handoff_available_for_verification?(handoff)
+      !handoff.expired? && handoff.status.in?(%w[pending challenge_sent])
+    end
 
     def create_initial_messages!(session, handoff)
       session.chat_messages.create!(

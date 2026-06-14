@@ -21,6 +21,7 @@ Already done:
 - Long-term architecture/RAG direction documented in `docs/architecture-and-rag-plan.md`.
 - Secure handoff/staff workflow documented in `docs/secure-support-workflow.md`.
 - Rails-backed prototype direction documented in `docs/rails-backed-prototype-plan.md`.
+- Production-shaped full demo plan documented in `docs/full-end-to-end-demo-plan.md` for the next PR after secure handoff foundation merges.
 - Frontend moved into `web/` and Rails API foundation added under `api/`.
 - Fake users/roles, fake Airtable-style plan rules, controlled ARIA knowledge entries, and audit-event API support added for the first foundation PR.
 - Public ARIA chat sessions/messages, deterministic classification, template fallback responses, optional OpenRouter via Rails, secure handoff CTA, bottom-right chat widget UX, and broader public retirement-plan knowledge added for the controlled chat/widget PRs.
@@ -32,10 +33,11 @@ Do not jump directly into a full production backend unless the goal is a paid pi
 Recommended next build sequence:
 
 1. **Frontend product prototype** — completed enough for stakeholder review; proves the website + ARIA direction.
-2. **Rails + React prototype app** — decided next step; adds persistence, queues, audit events, controlled chatbot behavior, and fake-data form intake.
-3. **Secure form intake expansion** — replace Jotform/PDF intake in concept with app-owned enrollment/request forms and staff submission queues.
-4. **Airtable/RAG integration** — once ASC provides sample Airtable schema/export or approves use of real/sanitized data.
-5. **Security/auth hardening** — once ASC requirements and identity-provider path are known.
+2. **Rails + React prototype app** — secure handoff foundation underway in PR #6.
+3. **Production-shaped full demo** — next branch should implement `docs/full-end-to-end-demo-plan.md`: real Clerk staff/admin flow, admin-created demo participants, real allowlisted email/SMS verification, Rails-backed staff queue, staff response workflow, and real audit dashboard.
+4. **Secure form intake expansion** — replace Jotform/PDF intake in concept with app-owned enrollment/request forms and staff submission queues.
+5. **Airtable/RAG integration** — once ASC provides sample Airtable schema/export or approves use of real/sanitized data.
+6. **Security/auth hardening** — once ASC requirements and identity-provider path are known.
 
 ## What we need before building the real backend
 

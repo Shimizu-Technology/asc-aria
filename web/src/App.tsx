@@ -625,9 +625,7 @@ function App({ isClerkEnabled = false }: { isClerkEnabled?: boolean }) {
 }
 
 function StaffAccessGate({ isClerkEnabled, children }: { isClerkEnabled: boolean; children: ReactNode }) {
-  if (!isClerkEnabled) return <>{children}</>
-
-  return <ClerkStaffAccessGate>{children}</ClerkStaffAccessGate>
+  return isClerkEnabled ? <ClerkStaffAccessGate>{children}</ClerkStaffAccessGate> : <>{children}</>
 }
 
 function ClerkStaffAccessGate({ children }: { children: ReactNode }) {
