@@ -118,6 +118,47 @@ class Api::V1::VerificationChallengesControllerTest < ActionDispatch::Integratio
     assert_not unmatched_payload.key?("participant")
   end
 
+  test "delivery persistence failure does not leave reusable pending challenge suppressing retry" do
+    failure = lambda do |challenge:, code: nil, contact: nil|
+      challenge.mark_failed!
+      raise ActiveRecord::RecordInvalid.new(OutboundDelivery.new)
+    end
+
+    assert_difference -> { VerificationChallenge.count }, 1 do
+      assert_no_difference -> { OutboundDelivery.count } do
+        with_replaced_method(SecureSupport::VerificationDelivery, :deliver!, failure) do
+          post api_v1_handoff_verification_challenges_url(@handoff.token), params: {
+            verification_challenge: {
+              channel: "email",
+              contact: "malia.demo@example.test"
+            }
+          }
+        end
+      end
+    end
+
+    assert_response :unprocessable_entity
+    failed_challenge = @handoff.verification_challenges.order(:created_at).last
+    assert_equal "failed", failed_challenge.status
+    assert_equal 0, failed_challenge.attempts_count
+
+    assert_difference -> { VerificationChallenge.count }, 1 do
+      assert_difference -> { OutboundDelivery.count }, 1 do
+        post api_v1_handoff_verification_challenges_url(@handoff.token), params: {
+          verification_challenge: {
+            channel: "email",
+            contact: "malia.demo@example.test"
+          }
+        }
+      end
+    end
+
+    assert_response :created
+    retry_payload = JSON.parse(response.body).fetch("challenge")
+    assert_not_equal failed_challenge.token, retry_payload.fetch("token")
+    assert_match(/\A\d{6}\z/, retry_payload.fetch("demo_code"))
+  end
+
   test "challenge request succeeds when audit recording fails after persistence" do
     assert_difference -> { VerificationChallenge.count }, 1 do
       with_replaced_method(AuditEvent, :record!, ->(**_kwargs) { raise StandardError, "audit unavailable" }) do

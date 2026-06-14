@@ -1,6 +1,42 @@
 require "test_helper"
 
 class SecureSupport::VerificationDeliveryTest < ActiveSupport::TestCase
+  test "delivery persistence failure marks challenge failed so a retry is not suppressed" do
+    participant = ParticipantDirectoryEntry.create!(
+      external_identifier: "DELIVERY-FAILURE-#{SecureRandom.hex(6)}",
+      display_name: "Delivery Failure Demo",
+      email: "delivery-failure-#{SecureRandom.hex(4)}@example.test",
+      phone: "671-555-0199",
+      employer_name: "Bank of Mila",
+      plan_name: "Bank of Mila 401(k)",
+      status: "active"
+    )
+    handoff = HandoffToken.create!(intent: "participant_specific", topic: "401(k) loan eligibility")
+    token = SecureRandom.urlsafe_base64(VerificationChallenge::TOKEN_BYTES)
+    challenge = VerificationChallenge.create!(
+      handoff_token: handoff,
+      participant_directory_entry: participant,
+      token: token,
+      channel: "email",
+      contact_digest: SecureSupport::Contact.digest("delivery-failure@example.test"),
+      contact_masked: SecureSupport::Contact.mask_email("delivery-failure@example.test"),
+      code_digest: VerificationChallenge.digest_code(token: token, code: "123456")
+    )
+    association = challenge.outbound_deliveries
+    failure = lambda do |**_attrs|
+      raise ActiveRecord::RecordInvalid.new(OutboundDelivery.new)
+    end
+
+    with_replaced_method(association, :create!, failure) do
+      assert_raises(ActiveRecord::RecordInvalid) do
+        SecureSupport::VerificationDelivery.deliver!(challenge: challenge, code: "123456", contact: "delivery-failure@example.test")
+      end
+    end
+
+    assert_equal "failed", challenge.reload.status
+    assert_empty challenge.outbound_deliveries
+  end
+
   test "live sends require configured test contact allowlist" do
     with_env(
       "LIVE_VERIFICATION_EMAILS_ENABLED" => "true",

@@ -4,13 +4,10 @@ module SecureSupport
       def deliver!(challenge:, code:, contact:)
         provider = provider_for(challenge.channel)
         live_send_allowed = live_send_enabled?(challenge.channel, contact: contact)
-        delivery = challenge.outbound_deliveries.create!(
-          channel: challenge.channel,
+        delivery = create_outbound_delivery!(
+          challenge: challenge,
           provider: provider,
-          recipient_digest: challenge.contact_digest,
-          recipient_masked: challenge.contact_masked,
-          status: "queued",
-          metadata: { fake_data_only: true, live_send_enabled: live_send_allowed }
+          live_send_allowed: live_send_allowed
         )
 
         unless live_send_allowed
@@ -58,6 +55,27 @@ module SecureSupport
         return "clicksend" if channel == "sms"
 
         "demo"
+      end
+
+      def create_outbound_delivery!(challenge:, provider:, live_send_allowed:)
+        challenge.outbound_deliveries.create!(
+          channel: challenge.channel,
+          provider: provider,
+          recipient_digest: challenge.contact_digest,
+          recipient_masked: challenge.contact_masked,
+          status: "queued",
+          metadata: { fake_data_only: true, live_send_enabled: live_send_allowed }
+        )
+      rescue ActiveRecord::ActiveRecordError => e
+        mark_challenge_failed_safely(challenge, error: e)
+        raise
+      end
+
+      def mark_challenge_failed_safely(challenge, error:)
+        Rails.logger.warn("[SecureSupport] Outbound delivery persistence failed: #{error.class}: #{error.message}")
+        challenge.mark_failed! if challenge.status.in?(%w[pending sent])
+      rescue StandardError => mark_error
+        Rails.logger.warn("[SecureSupport] Failed to mark challenge after delivery persistence error: #{mark_error.class}: #{mark_error.message}")
       end
 
       def live_send_skip_reason(channel, contact:)
