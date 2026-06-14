@@ -162,6 +162,38 @@ class Api::V1::VerificationChallengesControllerTest < ActionDispatch::Integratio
     assert_equal "sent", VerificationChallenge.find_by!(token: challenge_payload.fetch("token")).status
   end
 
+  test "wrong verification attempts persist and enforce max attempts" do
+    post api_v1_handoff_verification_challenges_url(@handoff.token), params: {
+      verification_challenge: {
+        channel: "email",
+        contact: "malia.demo@example.test"
+      }
+    }
+    challenge_payload = JSON.parse(response.body).fetch("challenge")
+    challenge = VerificationChallenge.find_by!(token: challenge_payload.fetch("token"))
+    wrong_code = challenge_payload.fetch("demo_code") == "000000" ? "111111" : "000000"
+
+    assert_no_difference -> { SecureAccessSession.count } do
+      assert_no_difference -> { SecureChatSession.count } do
+        assert_no_difference -> { SupportRequest.count } do
+          VerificationChallenge::MAX_ATTEMPTS.times do |attempt_index|
+            post verify_api_v1_handoff_verification_challenge_url(@handoff.token, challenge.token), params: {
+              verification_challenge: {
+                code: wrong_code
+              }
+            }
+
+            assert_response :unprocessable_entity
+            assert_equal attempt_index + 1, challenge.reload.attempts_count
+          end
+        end
+      end
+    end
+
+    assert_equal "failed", challenge.reload.status
+    assert_equal "challenge_sent", @handoff.reload.status
+  end
+
   test "verifies challenge and creates secure session support request" do
     post api_v1_handoff_verification_challenges_url(@handoff.token), params: {
       verification_challenge: {

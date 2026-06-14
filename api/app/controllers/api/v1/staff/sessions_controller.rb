@@ -3,7 +3,7 @@ module Api
     module Staff
       class SessionsController < Api::V1::Staff::BaseController
         def index
-          requests = SupportRequest
+          requests = visible_support_requests
             .includes(:participant_directory_entry, :assigned_staff, secure_chat_session: [ :chat_messages ])
             .open
             .recent
@@ -21,7 +21,13 @@ module Api
         private
 
         def support_request
-          @support_request ||= SupportRequest.find(params[:id])
+          @support_request ||= visible_support_requests
+            .includes(:participant_directory_entry, :assigned_staff, secure_chat_session: [ :chat_messages ])
+            .find(params[:id])
+        end
+
+        def visible_support_requests
+          SupportRequest.visible_to_staff_user(current_user)
         end
       end
     end

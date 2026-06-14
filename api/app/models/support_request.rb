@@ -12,6 +12,13 @@ class SupportRequest < ApplicationRecord
   scope :recent, -> { order(last_activity_at: :desc, created_at: :desc) }
   scope :open, -> { where.not(status: %w[resolved closed]) }
 
+  def self.visible_to_staff_user(user)
+    return all if user.blank?
+    return all if user.role&.name&.in?(%w[supervisor admin])
+
+    where(assigned_staff_id: [ nil, user.id ])
+  end
+
   def as_api_json(include_session: true)
     payload = {
       id: id,

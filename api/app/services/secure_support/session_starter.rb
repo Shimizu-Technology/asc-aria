@@ -8,21 +8,23 @@ module SecureSupport
     end
 
     def call
+      verify_challenge_before_session_transaction!
       result = nil
 
       HandoffToken.transaction do
         handoff = HandoffToken.lock.find(challenge.handoff_token_id)
+        locked_challenge = VerificationChallenge.lock.find(challenge.id)
         raise ArgumentError, "Verification code is invalid or expired" unless handoff_available_for_verification?(handoff)
-        raise ArgumentError, "Verification code is invalid or expired" unless challenge.participant_directory_entry
-        raise ArgumentError, "Verification code is invalid or expired" unless challenge.verify!(code)
+        raise ArgumentError, "Verification code is invalid or expired" unless locked_challenge.participant_directory_entry
+        raise ArgumentError, "Verification code is invalid or expired" unless locked_challenge.status == "verified"
 
-        participant = challenge.participant_directory_entry
+        participant = locked_challenge.participant_directory_entry
         handoff.mark_verified!(participant)
 
         access_session = SecureAccessSession.create!(
           participant_directory_entry: participant,
           handoff_token: handoff,
-          metadata: { fake_data_only: true, verification_challenge_id: challenge.id }
+          metadata: { fake_data_only: true, verification_challenge_id: locked_challenge.id }
         )
 
         secure_chat_session = SecureChatSession.create!(
@@ -58,7 +60,7 @@ module SecureSupport
         )
 
         secure_chat_session.update!(last_message_at: secure_chat_session.chat_messages.maximum(:occurred_at))
-        challenge.consume!
+        locked_challenge.consume!
         handoff.mark_used!
         result = Result.new(access_session, secure_chat_session, support_request)
       end
@@ -70,6 +72,13 @@ module SecureSupport
     private
 
     attr_reader :challenge, :code
+
+    def verify_challenge_before_session_transaction!
+      handoff = HandoffToken.find(challenge.handoff_token_id)
+      raise ArgumentError, "Verification code is invalid or expired" unless handoff_available_for_verification?(handoff)
+      raise ArgumentError, "Verification code is invalid or expired" unless challenge.participant_directory_entry
+      raise ArgumentError, "Verification code is invalid or expired" unless challenge.verify!(code)
+    end
 
     def handoff_available_for_verification?(handoff)
       !handoff.expired? && handoff.status.in?(%w[pending challenge_sent])
