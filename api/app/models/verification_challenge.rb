@@ -53,6 +53,10 @@ class VerificationChallenge < ApplicationRecord
     end
   end
 
+  def verified_with_code?(submitted_code)
+    status == "verified" && !expired? && secure_code_match?(submitted_code)
+  end
+
   def consume!
     update!(status: "consumed", consumed_at: Time.current)
   end

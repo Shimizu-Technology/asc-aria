@@ -3,6 +3,8 @@ require "digest"
 module StaffAuthenticatable
   extend ActiveSupport::Concern
 
+  STAFF_SIGN_IN_TOUCH_INTERVAL = 5.minutes
+
   private
 
   def authenticate_staff_or_admin_token!
@@ -46,8 +48,27 @@ module StaffAuthenticatable
     user = link_clerk_id_if_needed(user, clerk_id)
     return nil unless user
 
-    user.update!(last_sign_in_at: Time.current, invitation_status: "accepted", accepted_at: user.accepted_at || Time.current)
+    mark_staff_sign_in_seen!(user)
     user
+  end
+
+  def mark_staff_sign_in_seen!(user)
+    now = Time.current
+    return user unless staff_sign_in_touch_needed?(user, now)
+
+    user.update!(
+      last_sign_in_at: now,
+      invitation_status: "accepted",
+      accepted_at: user.accepted_at || now
+    )
+    user
+  end
+
+  def staff_sign_in_touch_needed?(user, now = Time.current)
+    user.invitation_status != "accepted" ||
+      user.accepted_at.blank? ||
+      user.last_sign_in_at.blank? ||
+      user.last_sign_in_at < STAFF_SIGN_IN_TOUCH_INTERVAL.ago(now)
   end
 
   def link_clerk_id_if_needed(user, clerk_id)

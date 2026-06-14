@@ -6,11 +6,12 @@ module Api
       before_action :authenticate_secure_access!
 
       def create
+        content = message_content
         message = nil
         SecureChatSession.transaction do
           message = secure_chat_session.chat_messages.create!(
             role: "user",
-            content: message_params.fetch(:content, ""),
+            content: content,
             metadata: { secure_participant_message: true, fake_data_only: true }
           )
           secure_chat_session.update!(status: "needs_staff_review") if secure_chat_session.status == "waiting_on_relias_lookup"
@@ -67,6 +68,13 @@ module Api
 
       def secure_access_token
         request.headers["X-ASC-ARIA-SECURE-ACCESS-TOKEN"].presence || request.authorization.to_s.match(/\ABearer\s+(.+)\z/)&.[](1)
+      end
+
+      def message_content
+        content = message_params[:content].to_s.strip
+        raise ArgumentError, "Message can't be blank" if content.blank?
+
+        content
       end
 
       def message_params

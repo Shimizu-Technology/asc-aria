@@ -77,6 +77,7 @@ module SecureSupport
       handoff = HandoffToken.find(challenge.handoff_token_id)
       raise ArgumentError, "Verification code is invalid or expired" unless handoff_available_for_verification?(handoff)
       raise ArgumentError, "Verification code is invalid or expired" unless challenge.participant_directory_entry
+      return if challenge.verified_with_code?(code)
       return if challenge.verify!(code)
 
       mark_handoff_verification_failed_if_exhausted!(handoff)

@@ -54,6 +54,19 @@ class Api::V1::SecureChatSessionsControllerTest < ActionDispatch::IntegrationTes
     assert_equal "needs_staff_review", @secure_chat_session.reload.status
   end
 
+  test "rejects blank participant message" do
+    assert_no_difference -> { @secure_chat_session.chat_messages.count } do
+      post api_v1_secure_chat_session_messages_url(@secure_chat_session.token), params: {
+        message: { content: "   " }
+      }, headers: {
+        "X-ASC-ARIA-SECURE-ACCESS-TOKEN" => @access_session.token
+      }
+    end
+
+    assert_response :unprocessable_entity
+    assert_equal "waiting_on_relias_lookup", @secure_chat_session.reload.status
+  end
+
   test "creates participant message when audit recording fails after persistence" do
     assert_difference -> { @secure_chat_session.chat_messages.count }, 1 do
       with_replaced_method(AuditEvent, :record!, ->(**_kwargs) { raise StandardError, "audit unavailable" }) do

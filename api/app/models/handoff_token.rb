@@ -27,13 +27,20 @@ class HandoffToken < ApplicationRecord
   end
 
   def available_for_challenge?
-    !expired? && status.in?(%w[pending challenge_sent]) && !verification_attempts_exhausted?
+    !expired? && status.in?(%w[pending challenge_sent]) && !verification_attempts_exhausted? && !verified_challenge_awaiting_session?
   end
 
   def verification_attempts_exhausted?
     verification_challenges
       .where(status: "failed")
       .where("attempts_count >= ?", VerificationChallenge::MAX_ATTEMPTS)
+      .exists?
+  end
+
+  def verified_challenge_awaiting_session?
+    verification_challenges
+      .where(status: "verified")
+      .where("expires_at > ?", Time.current)
       .exists?
   end
 

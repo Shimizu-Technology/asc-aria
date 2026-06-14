@@ -206,6 +206,61 @@ class Api::V1::VerificationChallengesControllerTest < ActionDispatch::Integratio
     assert_response :unprocessable_entity
   end
 
+  test "verified challenge can retry session creation after transient transaction failure" do
+    post api_v1_handoff_verification_challenges_url(@handoff.token), params: {
+      verification_challenge: {
+        channel: "email",
+        contact: "malia.demo@example.test"
+      }
+    }
+    challenge_payload = JSON.parse(response.body).fetch("challenge")
+    challenge = VerificationChallenge.find_by!(token: challenge_payload.fetch("token"))
+
+    failing_create = lambda do |*_args, **_kwargs|
+      raise ActiveRecord::RecordInvalid.new(SecureAccessSession.new)
+    end
+
+    with_replaced_method(SecureAccessSession, :create!, failing_create) do
+      post verify_api_v1_handoff_verification_challenge_url(@handoff.token, challenge.token), params: {
+        verification_challenge: {
+          code: challenge_payload.fetch("demo_code")
+        }
+      }
+    end
+
+    assert_response :unprocessable_entity
+    assert_equal "verified", challenge.reload.status
+    assert_equal "challenge_sent", @handoff.reload.status
+
+    assert_no_difference -> { VerificationChallenge.count } do
+      assert_no_difference -> { OutboundDelivery.count } do
+        post api_v1_handoff_verification_challenges_url(@handoff.token), params: {
+          verification_challenge: {
+            channel: "email",
+            contact: "malia.demo@example.test"
+          }
+        }
+      end
+    end
+    assert_response :unprocessable_entity
+
+    assert_difference -> { SecureAccessSession.count }, 1 do
+      assert_difference -> { SecureChatSession.count }, 1 do
+        assert_difference -> { SupportRequest.count }, 1 do
+          post verify_api_v1_handoff_verification_challenge_url(@handoff.token, challenge.token), params: {
+            verification_challenge: {
+              code: challenge_payload.fetch("demo_code")
+            }
+          }
+        end
+      end
+    end
+
+    assert_response :created
+    assert_equal "consumed", challenge.reload.status
+    assert_equal "used", @handoff.reload.status
+  end
+
   test "verifies challenge and creates secure session support request" do
     post api_v1_handoff_verification_challenges_url(@handoff.token), params: {
       verification_challenge: {
