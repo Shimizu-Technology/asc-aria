@@ -191,7 +191,19 @@ class Api::V1::VerificationChallengesControllerTest < ActionDispatch::Integratio
     end
 
     assert_equal "failed", challenge.reload.status
-    assert_equal "challenge_sent", @handoff.reload.status
+    assert_equal "verification_failed", @handoff.reload.status
+
+    assert_no_difference -> { VerificationChallenge.count } do
+      assert_no_difference -> { OutboundDelivery.count } do
+        post api_v1_handoff_verification_challenges_url(@handoff.token), params: {
+          verification_challenge: {
+            channel: "email",
+            contact: "malia.demo@example.test"
+          }
+        }
+      end
+    end
+    assert_response :unprocessable_entity
   end
 
   test "verifies challenge and creates secure session support request" do

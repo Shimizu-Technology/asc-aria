@@ -1,5 +1,5 @@
 class HandoffToken < ApplicationRecord
-  STATUSES = %w[pending challenge_sent verified used expired cancelled].freeze
+  STATUSES = %w[pending challenge_sent verified used expired cancelled verification_failed].freeze
   DEFAULT_TTL = 30.minutes
   TOKEN_BYTES = 32
   MAX_QUESTION_LENGTH = 2_000
@@ -27,7 +27,14 @@ class HandoffToken < ApplicationRecord
   end
 
   def available_for_challenge?
-    !expired? && status.in?(%w[pending challenge_sent])
+    !expired? && status.in?(%w[pending challenge_sent]) && !verification_attempts_exhausted?
+  end
+
+  def verification_attempts_exhausted?
+    verification_challenges
+      .where(status: "failed")
+      .where("attempts_count >= ?", VerificationChallenge::MAX_ATTEMPTS)
+      .exists?
   end
 
   def mark_challenge_sent!
@@ -36,6 +43,10 @@ class HandoffToken < ApplicationRecord
 
   def mark_verified!(participant_entry)
     update!(status: "verified", participant_directory_entry: participant_entry)
+  end
+
+  def mark_verification_failed!
+    update!(status: "verification_failed")
   end
 
   def mark_used!
