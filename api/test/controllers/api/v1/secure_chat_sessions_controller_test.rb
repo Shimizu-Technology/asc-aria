@@ -31,6 +31,16 @@ class Api::V1::SecureChatSessionsControllerTest < ActionDispatch::IntegrationTes
     assert_response :unauthorized
   end
 
+  test "rejects revoked secure access token for secure chat" do
+    @access_session.update!(status: "revoked")
+
+    get api_v1_secure_chat_session_url(@secure_chat_session.token), headers: {
+      "X-ASC-ARIA-SECURE-ACCESS-TOKEN" => @access_session.token
+    }
+
+    assert_response :unauthorized
+  end
+
   test "shows secure chat with valid access token" do
     get api_v1_secure_chat_session_url(@secure_chat_session.token), headers: {
       "X-ASC-ARIA-SECURE-ACCESS-TOKEN" => @access_session.token
@@ -39,6 +49,20 @@ class Api::V1::SecureChatSessionsControllerTest < ActionDispatch::IntegrationTes
     assert_response :success
     body = JSON.parse(response.body)
     assert_equal @secure_chat_session.token, body.fetch("secure_chat_session").fetch("token")
+  end
+
+  test "rejects revoked secure access token for participant message" do
+    @access_session.update!(status: "revoked")
+
+    assert_no_difference -> { @secure_chat_session.chat_messages.count } do
+      post api_v1_secure_chat_session_messages_url(@secure_chat_session.token), params: {
+        message: { content: "Please review this." }
+      }, headers: {
+        "X-ASC-ARIA-SECURE-ACCESS-TOKEN" => @access_session.token
+      }
+    end
+
+    assert_response :unauthorized
   end
 
   test "creates participant message with valid access token" do

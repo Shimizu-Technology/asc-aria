@@ -16,7 +16,13 @@ class SecureAccessSession < ApplicationRecord
   scope :active, -> { where(status: "active").where("expires_at > ?", Time.current) }
 
   def expired?
-    expires_at.present? && Time.current > expires_at
+    status != "active" || time_expired?
+  end
+
+  def effective_status
+    return "expired" if status == "active" && time_expired?
+
+    status
   end
 
   def touch_seen!
@@ -26,7 +32,7 @@ class SecureAccessSession < ApplicationRecord
   def as_api_json
     {
       token: token,
-      status: expired? ? "expired" : status,
+      status: effective_status,
       participant: participant_directory_entry.as_api_json,
       expires_at: expires_at&.iso8601,
       last_seen_at: last_seen_at&.iso8601
@@ -34,6 +40,10 @@ class SecureAccessSession < ApplicationRecord
   end
 
   private
+
+  def time_expired?
+    expires_at.present? && Time.current > expires_at
+  end
 
   def set_defaults
     self.token ||= SecureRandom.urlsafe_base64(TOKEN_BYTES)
